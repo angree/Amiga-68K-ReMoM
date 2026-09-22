@@ -1,0 +1,42 @@
+# autoinput-objazd.txt - objazd ekranow do pomiaru fps (PERF-LIVE) na ekran.
+# Kazdy odcinek konczy 'snap <ekran>' - perf-ekrany.py tnie log po snapach.
+wait 8000
+move 120 100
+wait 6000
+snap mapa
+click 60 8
+wait 7000
+snap czary
+key escape
+wait 3000
+click 100 8
+wait 7000
+snap armie
+key escape
+wait 3000
+click 150 8
+wait 7000
+snap miasta
+key escape
+wait 3000
+click 195 8
+wait 7000
+snap magia
+key escape
+wait 3000
+click 240 8
+wait 5000
+snap info
+key escape
+wait 3000
+click 285 8
+wait 7000
+snap myrror
+click 285 8
+wait 4000
+rclick 60 60
+wait 3000
+rclick 200 150
+wait 3000
+snap przewijanie
+quit

@@ -1,0 +1,22 @@
+; Work:run - ZWYKLA GRA: ReMoM startuje od intra (Escape pomija) i menu
+; glownego. Do grania przez developera - obraz AGA w oknie WinUAE na tym
+; komputerze tylko z gfx_api=direct3d11 (winuae\mom-aga-d3d11.uae);
+; RTG: remom-prefs GFX=RTG (albo Set REMOM_GFX rtg) i winuae\mom-rtg.uae.
+; Zadnego autoinputu - Work:autoinput.on jest kasowany na wszelki wypadek.
+FailAt 1000000
+Stack 1000000
+CD Work:
+; straznik resetu: host resetuje Amige plikiem Work:reset.flag,
+; bez restartu emulatora (native/remom/straznik.c)
+Delete >NIL: Work:reset.flag
+Run >NIL: Work:straznik
+; Workbench w tle (developer 2026-09-17: pamiec, ustawienia systemu przez
+; gadzet glebi) - User-Startup dziala PRZED LoadWB z Startup-Sequence
+LoadWB
+Delete >NIL: Work:mom.done
+Delete >NIL: Work:autoinput.on
+remom >Work:mom.log
+; kod wyjscia programu zapamietany PRZED Why (Why ustawia wlasny $RC)
+Set PRC $RC
+Why >Work:mom.why
+Echo >Work:mom.done "rc=$PRC"

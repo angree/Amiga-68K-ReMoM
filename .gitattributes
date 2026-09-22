@@ -1,0 +1,36 @@
+# Skrypty powłoki MUSZĄ mieć LF. Z CRLF bash dokleja \r do ostatniego argumentu
+# każdej linii i nic się nie wykonuje — a log wygląda zupełnie normalnie.
+# W siostrzanym projekcie ta pułapka kosztowała cały dzień.
+*.sh    text eol=lf
+run     text eol=lf
+
+# Kod źródłowy i skrypty amigowe też trzymamy na LF: kompilator jest w WSL,
+# a AmigaDOS czyta Work:run bezpośrednio.
+*.c     text eol=lf
+*.h     text eol=lf
+*.s     text eol=lf
+*.uae   text eol=lf
+*.py    text eol=lf
+*.md    text eol=lf
+
+# PowerShell działa z jednym i drugim, ale spójność jest tańsza niż wyjątki.
+*.ps1   text eol=lf
+
+# Binaria - bez żadnej konwersji.
+*.hdf   binary
+*.ROM   binary
+*.rom   binary
+*.zip   binary
+*.png   binary
+
+# Wektory testowe MUSZA byc LF: Amiga pisze LF, a porownanie idzie znak w znak.
+# Wektor 02 wyszedl raz z CRLF (Python na Windows tlumaczy koniec linii na stdout)
+# i autocrlf gita przywrocilby ten sam blad przy kazdym checkoucie.
+tests/*.txt text eol=lf
+
+# Skrypty AmigaDOS dla Work:run (build/run-<nazwa>) - LF, jak run.
+run-*   text eol=lf
+
+# Przypiety snapshot upstreamu ReMoM.
+*.tar.gz binary
+build/autoinput-*.txt eol=lf

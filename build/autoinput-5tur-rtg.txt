@@ -1,0 +1,41 @@
+# autoinput-5tur.txt - test_ai_5turns.hms przepisany na Work:autoinput.txt:
+# to samo wejscie, ale przez zdarzenia IDCMP (amiga_Auto.c), nie przez
+# odtwarzacz scenariusza. Bez ogona save-and-quit (nie dziala takze na PC).
+wait 500
+snap rtg-start
+key backspace
+type Claudesville
+key return
+wait 500
+click 290 180
+wait 300
+key N
+wait 500
+click 54 38
+wait 1000
+click 290 180
+wait 300
+key N
+wait 1000
+click 290 180
+wait 300
+key N
+wait 1000
+click 290 180
+wait 300
+key N
+wait 1000
+click 290 180
+wait 300
+key N
+wait 1000
+# tura 5 konczy sie wyborem badan - na PC zamyka go dopiero klik z ogona
+# scenariusza; bez niego gra czeka i brakuje 83 ostatnich wywolan RNG
+wait 2000
+click 54 38
+wait 2000
+# koniec przebiegu - program sie zamyka, harness dostaje mom.done
+wait 3000
+snap rtg-koniec
+wait 1000
+quit

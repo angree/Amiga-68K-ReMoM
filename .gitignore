@@ -1,0 +1,5 @@
+upstream/
+native/cgx-include/
+*.o
+__pycache__/
+Thumbs.db

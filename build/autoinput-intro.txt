@@ -1,0 +1,12 @@
+# autoinput-intro.txt - zwykly start (intro), potem menu glowne
+wait 3000
+snap intro-1
+wait 8000
+snap intro-2
+wait 15000
+snap intro-3
+key escape
+wait 5000
+snap intro-menu
+wait 1000
+quit

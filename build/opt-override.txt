@@ -1,0 +1,8 @@
+# Pliki kompilowane z INNA optymalizacja niz domyslne -O2 -fno-peephole2.
+# Format: <sciezka wzgledem drzewa ReMoM> <flagi optymalizacji>
+# Kazda pozycja musi miec powod - to koszt predkosci na 68020.
+#
+# 2026-09-17 EKSPERYMENT: dekodowanie klatki FLIC (Add_Picture_To_Bitmap)
+# psuje naglowek bitmapy roboczej drugiej jednostki na Amidze, a ten sam kod
+# z tymi samymi danymi dziala na PC. Sprawdzamy, czy to kompilator.
+# MoX/src/FLIC_Draw.c -O0   (wylaczone: -O0 przesunelo awarie gdzie indziej - trop stosu)

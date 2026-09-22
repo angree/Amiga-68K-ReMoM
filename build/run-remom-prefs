@@ -1,0 +1,50 @@
+; run-remom-prefs - test programu ustawien remom-prefs (linia polecen, okno,
+; ikony) i startu gry z zapisanymi przez niego ustawieniami. amiga.cfg gracza
+; odlozony na czas testu.
+FailAt 1000000
+Stack 1000000
+CD Work:
+Delete >NIL: Work:reset.flag
+Run >NIL: Work:straznik
+LoadWB
+Delete >NIL: Work:mom.done
+If EXISTS Work:amiga.cfg
+  Copy Work:amiga.cfg Work:amiga.cfg-gracz
+EndIf
+Delete >NIL: Work:amiga.cfg
+Echo >Work:mom.log "== SHOW (bez pliku - domyslne)"
+remom-prefs SHOW >>Work:mom.log
+Echo >>Work:mom.log "== zapis z linii polecen"
+remom-prefs GFX=Window VIDEO=pal MUSIC=Off CURSOR=System FPS=Off >>Work:mom.log
+Echo >>Work:mom.log "== zla wartosc (ma byc blad 20)"
+remom-prefs GFX=cokolwiek >>Work:mom.log
+Echo >>Work:mom.log "rc=$RC"
+Echo >>Work:mom.log "== plik"
+Type Work:amiga.cfg >>Work:mom.log
+Echo >>Work:mom.log "== okno (3 s)"
+remom-prefs TESTWINDOW >>Work:mom.log
+Echo >>Work:mom.log "rc=$RC"
+Echo >>Work:mom.log "== ikony"
+wbstart IKONA remom-prefs >>Work:mom.log
+wbstart IKONA remom >>Work:mom.log
+Echo >>Work:mom.log "== gra z tymi ustawieniami"
+Echo >Work:autoinput.on "on"
+Copy Work:autoinput-wb.txt Work:autoinput.txt
+remom >Work:mom-gra.log
+Set PRC $RC
+Type Work:mom-gra.log >>Work:mom.log
+Echo >>Work:mom.log "== gra z FPS=On, GFX=Auto"
+remom-prefs FPS=On GFX=Auto >>Work:mom.log
+Echo >Work:autoinput.on "on"
+Copy Work:autoinput-wb.txt Work:autoinput.txt
+remom >Work:mom-gra.log
+Set PRC $RC
+Type Work:mom-gra.log >>Work:mom.log
+Delete >NIL: Work:autoinput.on
+Copy >NIL: Work:amiga.cfg Work:wynik-amiga.cfg
+Delete >NIL: Work:amiga.cfg
+If EXISTS Work:amiga.cfg-gracz
+  Copy Work:amiga.cfg-gracz Work:amiga.cfg
+  Delete >NIL: Work:amiga.cfg-gracz
+EndIf
+Echo >Work:mom.done "rc=$PRC"

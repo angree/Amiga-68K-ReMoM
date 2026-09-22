@@ -1,0 +1,30 @@
+# autoinput-opcje.txt - menu z nowa pozycja, ekran Amiga Options, przelaczanie opcji
+wait 12000
+move 300 60
+wait 1500
+snap menu-nowe
+move 160 168
+wait 1500
+snap menu-opcje-pod-mysza
+move 160 191
+wait 1500
+snap menu-quit-pod-mysza
+click 160 168
+wait 4000
+snap opcje-1
+click 160 137
+wait 1500
+click 160 149
+wait 1500
+click 160 161
+wait 1500
+click 160 161
+wait 1500
+move 160 179
+wait 1500
+snap opcje-2
+click 160 179
+wait 6000
+snap menu-po-opcjach
+wait 3000
+quit

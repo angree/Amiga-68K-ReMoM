@@ -1,0 +1,19 @@
+; Auto-start script for the WinUAE test machine.
+;
+; The HDF's User-Startup runs Work:run at boot, so a test cycle is: build on
+; the host (build.sh drops the binary into this shared folder), then start
+; WinUAE with -f <config>. Nothing inside the HDF image ever has to change -
+; and since every mom-*.uae mounts the hardfile "ro", nothing inside it CAN.
+;
+; Stack: libnix gives a CLI process 4 KB by default. MoM is plain C with no
+; deep template recursion, so it needs nothing like the 1 MB the OpenXcom port
+; required - but combat pathfinding recurses over the battle grid, and 1 MB
+; costs nothing on a machine with fast RAM. Left generous on purpose: a blown
+; stack shows up as address error 8000 0003 with the machine dead before the
+; trap handler can log anything, which is an expensive thing to diagnose twice.
+;
+; IMPORTANT: after running a probe from here, put amimom-aga back. A forgotten
+; probe in Work:run looks exactly like a regression in the game.
+Stack 1000000
+CD Work:
+amimom-aga >Work:mom-console.log

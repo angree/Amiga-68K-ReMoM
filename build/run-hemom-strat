@@ -1,0 +1,42 @@
+; Work:run - walka strategiczna z testow upstreamu (HeMoM_Combat_Strategic):
+; SAVECMBT.GAM, gracz 2 (jednostki 12,15,17) na stos jednostki 500, ziarno
+; 12345. HeMoM zapisuje HEMOM_COMBAT.txt - sprawdzamy go na PC
+; check_save_fields z assert_combat_strategic.txt i porownujemy slad RNG.
+FailAt 1000000
+Stack 1000000
+CD Work:
+; straznik resetu: host resetuje Amige plikiem Work:reset.flag,
+; bez restartu emulatora (native/remom/straznik.c)
+Delete >NIL: Work:reset.flag
+Run >NIL: Work:straznik
+; Workbench w tle (developer 2026-09-17: pamiec, ustawienia systemu przez
+; gadzet glebi) - User-Startup dziala PRZED LoadWB z Startup-Sequence
+LoadWB
+; pliki gracza odlozone na czas testu (developer gra na tym samym Work:)
+If NOT EXISTS Work:MAGIC.GRACZ
+  Copy >NIL: Work:amiga.cfg Work:amiga.cfg-gracz
+  Copy Work:MAGIC.SET Work:MAGIC.GRACZ
+  Copy >NIL: Work:SAVE1.GAM Work:SAVE1.GRACZ
+  Copy >NIL: Work:SAVE9.GAM Work:SAVE9.GRACZ
+EndIf
+; opcje gry ze wzorca - kreator nowej gry pamieta ostatnie ustawienia
+Copy Work:MAGIC.ORG Work:MAGIC.SET
+; ustawienia Amigi gracza (remom-prefs) nie wplywaja na test
+Delete >NIL: Work:amiga.cfg
+Delete >NIL: Work:mom.done
+Delete >NIL: Work:HEMOM_COMBAT.txt
+hemom --combat 500 12,15,17 --seed1 12345 >Work:mom.log
+; kod wyjscia programu zapamietany PRZED Why (Why ustawia wlasny $RC)
+Set PRC $RC
+Why >Work:mom.why
+; wynik testu osobno - zaraz wroca pliki gracza
+Copy >NIL: Work:SAVE1.GAM Work:wynik-SAVE1.GAM
+Copy >NIL: Work:SAVE9.GAM Work:wynik-SAVE9.GAM
+; pliki gracza z powrotem
+Copy Work:MAGIC.GRACZ Work:MAGIC.SET
+Copy >NIL: Work:SAVE1.GRACZ Work:SAVE1.GAM
+Copy >NIL: Work:SAVE9.GRACZ Work:SAVE9.GAM
+Delete >NIL: Work:amiga.cfg
+Copy >NIL: Work:amiga.cfg-gracz Work:amiga.cfg
+Delete >NIL: Work:MAGIC.GRACZ Work:SAVE1.GRACZ Work:SAVE9.GRACZ Work:amiga.cfg-gracz
+Echo >Work:mom.done "rc=$PRC"

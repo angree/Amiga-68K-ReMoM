@@ -1,0 +1,8 @@
+# autoinput-menu.txt - menu glowne i pierwszy ekran nowej gry (zrzuty)
+wait 4000
+snap menu
+wait 1000
+click 160 155
+wait 3000
+snap nowa-1
+wait 1000

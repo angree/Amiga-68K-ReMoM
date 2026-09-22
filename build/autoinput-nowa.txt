@@ -1,0 +1,34 @@
+# autoinput-nowa.txt - nowa gra od menu glownego (New Game: y 150-161 od 2026-09-17, menu 12 px wyzej): opcje domyslne (Normal,
+# Four, Large, Normal), Merlin, High Men, niebieski sztandar; potem czekamy
+# na generator swiata i robimy zrzuty ekranu glownego.
+wait 4000
+snap nowa-menu
+click 160 155
+wait 3000
+snap nowa-opcje
+click 283 186
+wait 3000
+snap nowa-czarodziej
+click 202 34
+wait 3000
+snap nowa-nazwa
+key return
+wait 3000
+snap nowa-rasa
+click 238 82
+wait 3000
+snap nowa-sztandar
+click 245 72
+wait 5000
+snap nowa-swiat-1
+wait 2000
+key return
+wait 2000
+snap nowa-stolica
+key N
+wait 3000
+snap nowa-tura-2
+wait 1000
+# koniec przebiegu - program sie zamyka, harness dostaje mom.done
+wait 3000
+quit

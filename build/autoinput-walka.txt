@@ -1,0 +1,18 @@
+# autoinput-walka.txt - tylko zrzuty ekranu bitwy (walke prowadzi AI, REMOM_WALKA)
+wait 2000
+snap walka-1
+wait 3000
+snap walka-2
+wait 3000
+snap walka-3
+wait 3000
+snap walka-4
+wait 3000
+snap walka-5
+wait 3000
+snap walka-6
+wait 5000
+snap walka-7
+# bezpiecznik: gdyby walka sie nie zaczela - wyjscie po 2 minutach
+wait 120000
+quit

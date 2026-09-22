@@ -1,0 +1,14 @@
+# autoinput-wczytaj.txt - wczytanie gry z menu: Load Game -> DRUGI wiersz -> Load
+# (pierwszy wiersz nie daje sie wybrac takze na PC: LoadScr.c porownuje numer
+# pliku od 1 z indeksem pola od 0 - blad ReMoM, nie portu)
+wait 4000
+click 160 143
+wait 3000
+snap wcz-lista
+click 123 64
+wait 1000
+click 100 177
+wait 6000
+snap wcz-gra
+wait 1000
+quit

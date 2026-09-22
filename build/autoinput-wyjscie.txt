@@ -1,0 +1,6 @@
+# autoinput-wyjscie.txt - start z opcjami z amiga.cfg, wyjscie przez Quit To AmigaOS
+wait 8000
+snap wyjscie-menu
+wait 1000
+click 160 191
+wait 20000

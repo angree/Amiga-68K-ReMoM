@@ -1,0 +1,5 @@
+# autoinput-wb.txt - start z ikony (wbstart): zrzut menu i wyjscie
+wait 8000
+snap wb-menu
+wait 2000
+quit
