@@ -34,3 +34,4 @@ run-*   text eol=lf
 # Przypiety snapshot upstreamu ReMoM.
 *.tar.gz binary
 build/autoinput-*.txt eol=lf
+build/upstream-pliki.txt text eol=lf
