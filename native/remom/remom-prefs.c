@@ -21,6 +21,11 @@
  *   fps=0|1      kl./s i najdluzsza klatka w tytule na pasku
  *   cursor=0|1   1 = wskaznik systemowy zamiast kursora gry
  *   music=0|1    muzyka
+ *   musicrate=0|1  jakosc konwersji muzyki: 11025 / 22050 Hz (gra czyta Hz z WAV)
+ *
+ * "Convert music" (i CONVERT w Shellu): muzyka z MUSIC.LBX gracza do muzyka/
+ * na tej Amidze - native/remom/muzyka_konw.c (2026-09-24: gracze nie mieli
+ * konwertera na PC).
  *
  * Tekst w oknie po angielsku (to widzi gracz), komentarze po polsku.
  * Nigdy sprintf (CLAUDE.md, defekt 2) - tylko snprintf.
@@ -42,9 +47,12 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+
+#include "muzyka_konw.h"
 
 static const char verstag[] __attribute__((used)) =
-    "$VER: remom-prefs 1.0 (17.09.2026)";
+    "$VER: remom-prefs 1.1 (24.09.2026)";
 
 #define PLIK "PROGDIR:amiga.cfg"
 
@@ -54,7 +62,7 @@ struct Library *GadToolsBase = NULL;
 /*  Ustawienia                                                              */
 /* ------------------------------------------------------------------------ */
 
-enum { O_GFX, O_VIDEO, O_BAR, O_FPS, O_CURSOR, O_MUSIC, O_COUNT };
+enum { O_GFX, O_VIDEO, O_BAR, O_FPS, O_CURSOR, O_MUSIC, O_MRATE, O_COUNT };
 
 typedef struct
 {
@@ -96,6 +104,10 @@ static const opcja_t OPCJE[O_COUNT] = {
       { "Off", "On", NULL, NULL, NULL },
       { "No music (sound effects stay). Saves some CPU.",
         "Music streamed from the muzyka drawer.", NULL, NULL }, 1 },
+    { "musicrate", "Music quality:", "MUSICRATE", 'R', 2,
+      { "11kHz", "22kHz", NULL, NULL, NULL },
+      { "Convert music at 11 kHz: less disk space and CPU.",
+        "Convert music at 22 kHz: clearer, twice the disk space.", NULL, NULL }, 0 },
 };
 
 static int wart[O_COUNT];
@@ -174,7 +186,137 @@ static void opis_maszyny(char *dst, int cap)
 #define GID_SAVE  30
 #define GID_CANCEL 31
 
-#define KLAWISZE "Keys:  G V B F P M change   S save   Esc cancel"
+#define KLAWISZE "Keys: G V B F P M R change  C convert  S save  Esc"
+#define GID_KONW 32
+#define GID_STATUS 42
+
+/* ------------------------------------------------------------------------ */
+/*  Muzyka: konwersja na miejscu (native/remom/muzyka_konw.c)               */
+/* ------------------------------------------------------------------------ */
+
+static int konw_max = 0;          /* CONVERTMAX=n - tylko do testow */
+static int rowne(const char *a, const char *b);
+
+static long wybrana_czestotliwosc(void)
+{
+    return wart[O_MRATE] ? 22050L : 11025L;
+}
+
+/* katalog biezacy = katalog programu (tam leza LBX i muzyka/), tworzy muzyka/ */
+static BPTR przejdz_do_gry(void)
+{
+    BPTR stary = CurrentDir(GetProgramDir());
+    BPTR l = Lock((CONST_STRPTR)"muzyka", ACCESS_READ);
+    if (l == 0) l = CreateDir((CONST_STRPTR)"muzyka");
+    if (l != 0) UnLock(l);
+    return stary;
+}
+
+static void stan_muzyki(char *dst, int cap)
+{
+    BPTR stary = CurrentDir(GetProgramDir());
+    BPTR l = Lock((CONST_STRPTR)"muzyka", ACCESS_READ);
+    int n = 0;
+    if (l != 0) {
+        struct FileInfoBlock *fib = (struct FileInfoBlock *)AllocDosObject(DOS_FIB, NULL);
+        if (fib != NULL && Examine(l, fib)) {
+            while (ExNext(l, fib)) {
+                size_t d = strlen((char *)fib->fib_FileName);
+                if (d > 4 && rowne((char *)fib->fib_FileName + d - 4, ".wav")) n++;
+            }
+        }
+        if (fib != NULL) FreeDosObject(DOS_FIB, fib);
+        UnLock(l);
+    }
+    CurrentDir(stary);
+    if (n > 0) snprintf(dst, (size_t)cap, "Music: %d files converted. Convert again to finish or change quality.", n);
+    else snprintf(dst, (size_t)cap, "Music: not converted yet - press \"Convert music\".");
+    dst[cap - 1] = 0;
+}
+
+/* zrzut ekranu Workbencha z oknem (test: czy okno sie miesci) - PPM */
+static void zrzut(struct Screen *scr, const char *plik)
+{
+    FILE *f = fopen(plik, "wb");
+    int x, y;
+    ULONG rgb[3];
+    UBYTE pal[256][3];
+    int ile = 1 << scr->RastPort.BitMap->Depth;
+    if (f == NULL) return;
+    if (ile > 256) ile = 256;
+    for (x = 0; x < ile; x++) {
+        GetRGB32(scr->ViewPort.ColorMap, (ULONG)x, 1, rgb);
+        pal[x][0] = (UBYTE)(rgb[0] >> 24); pal[x][1] = (UBYTE)(rgb[1] >> 24); pal[x][2] = (UBYTE)(rgb[2] >> 24);
+    }
+    fprintf(f, "P6\n%d %d\n255\n", (int)scr->Width, (int)scr->Height);
+    for (y = 0; y < scr->Height; y++)
+        for (x = 0; x < scr->Width; x++) {
+            LONG c = ReadPixel(&scr->RastPort, (LONG)x, (LONG)y);
+            fwrite(pal[(c < 0 || c >= ile) ? 0 : c], 1, 3, f);
+        }
+    fclose(f);
+}
+
+/* Konwersja w oknie; w trakcie okno dalej odpowiada, Esc / Convert / zamkniecie
+   przerywa (niedokonczony plik jest kasowany, gotowe zostaja). */
+static void konwertuj_okno(struct Window *win, struct Gadget *st)
+{
+    static char tekst[128];
+    char blad[128];
+    char poprzedni[128];
+    BPTR stary = przejdz_do_gry();
+    konw_t *k = Konw_Start("muzyka", wybrana_czestotliwosc(), konw_max, blad, (int)sizeof blad);
+    int r = 1, przerwij = 0;
+    if (k == NULL) {
+        CurrentDir(stary);
+        snprintf(tekst, sizeof tekst, "%s", blad);
+        GT_SetGadgetAttrs(st, win, NULL, GTTX_Text, (ULONG)tekst, TAG_END);
+        return;
+    }
+    poprzedni[0] = 0;
+    while (r > 0 && !przerwij) {
+        struct IntuiMessage *msg;
+        r = Konw_Krok(k, tekst, (int)sizeof tekst);
+        if (strcmp(tekst, poprzedni) != 0) {
+            strcpy(poprzedni, tekst);
+            GT_SetGadgetAttrs(st, win, NULL, GTTX_Text, (ULONG)tekst, TAG_END);
+        }
+        while ((msg = GT_GetIMsg(win->UserPort)) != NULL) {
+            ULONG cls = msg->Class;
+            UWORD code = msg->Code;
+            struct Gadget *src = (struct Gadget *)msg->IAddress;
+            GT_ReplyIMsg(msg);
+            if (cls == IDCMP_CLOSEWINDOW) przerwij = 1;
+            else if (cls == IDCMP_VANILLAKEY && (code == 27 || code == 'c' || code == 'C')) przerwij = 1;
+            else if (cls == IDCMP_GADGETUP && src->GadgetID == GID_KONW) przerwij = 1;
+            else if (cls == IDCMP_REFRESHWINDOW) { GT_BeginRefresh(win); GT_EndRefresh(win, TRUE); }
+        }
+    }
+    if (przerwij) snprintf(tekst, sizeof tekst, "Stopped at %d files - press Convert music again to continue.", Konw_Zrobione(k));
+    Konw_Koniec(k);
+    CurrentDir(stary);
+    GT_SetGadgetAttrs(st, win, NULL, GTTX_Text, (ULONG)tekst, TAG_END);
+}
+
+/* linia polecen: CONVERT */
+static int konwertuj_shell(void)
+{
+    char tekst[128];
+    char blad[128];
+    int ostatni = -1, r;
+    BPTR stary = przejdz_do_gry();
+    konw_t *k = Konw_Start("muzyka", wybrana_czestotliwosc(), konw_max, blad, (int)sizeof blad);
+    if (k == NULL) { CurrentDir(stary); printf("remom-prefs: %s\n", blad); return 20; }
+    printf("Converting %d music tracks at %ld Hz (Ctrl-C stops)...\n", Konw_Ile(k), wybrana_czestotliwosc());
+    while ((r = Konw_Krok(k, tekst, (int)sizeof tekst)) > 0) {
+        if (Konw_Zrobione(k) != ostatni) { ostatni = Konw_Zrobione(k); printf("%s\n", tekst); fflush(stdout); }
+        if (SetSignal(0L, SIGBREAKF_CTRL_C) & SIGBREAKF_CTRL_C) { printf("*** Break\n"); r = -1; break; }
+    }
+    printf("%s\n", tekst);
+    Konw_Koniec(k);
+    CurrentDir(stary);
+    return r < 0 ? 10 : 0;
+}
 
 static int szer(struct Screen *scr, const char *s)
 {
@@ -183,12 +325,14 @@ static int szer(struct Screen *scr, const char *s)
 
 /* 1 = zapisz, 0 = anuluj, -1 = okno sie nie otworzylo.
    test_ms > 0: okno otwiera sie, po tym czasie zamyka bez zapisu (test). */
-static int okno(int test_ms)
+static int okno(int test_ms, int test_konw)
 {
     struct Screen *scr;
     APTR vi;
     struct Gadget *glist = NULL, *gad;
     struct Gadget *cykl[O_COUNT], *podp[O_COUNT];
+    struct Gadget *status;
+    char stan[128];
     struct Window *win;
     struct NewGadget ng;
     STRPTR etyk[O_COUNT][6];
@@ -203,6 +347,7 @@ static int okno(int test_ms)
     if (vi == NULL) { UnlockPubScreen(NULL, scr); return -1; }
 
     opis_maszyny(maszyna, (int)sizeof maszyna);
+    stan_muzyki(stan, (int)sizeof stan);
 
     /* wszystko liczone z fontu ekranu - Workbench moze miec dowolny */
     cw = scr->RastPort.TxWidth;  if (cw < 6) cw = 6;
@@ -224,10 +369,14 @@ static int okno(int test_ms)
         }
         etyk[i][OPCJE[i].ile] = NULL;
     }
-    innerw = lm + labw + gadw + lm;
+    /* DWIE KOLUMNY i JEDNA wspolna linia podpowiedzi (2026-09-24): z podpowiedzia
+       pod kazda opcja okno mialo 371 px wysokosci i nie miescilo sie na
+       Workbenchu 640x256 - a doszly jeszcze jakosc muzyki i konwersja. */
+    innerw = lm + (labw + gadw) * 2 + cw * 3 + lm;
     if (lm + hintw + lm > innerw) innerw = lm + hintw + lm;
     if (lm + szer(scr, maszyna) + lm > innerw) innerw = lm + szer(scr, maszyna) + lm;
     if (lm + szer(scr, KLAWISZE) + lm > innerw) innerw = lm + szer(scr, KLAWISZE) + lm;
+    if (lm + szer(scr, stan) + lm > innerw) innerw = lm + szer(scr, stan) + lm;
 
     leftb = scr->WBorLeft;
     topb = scr->WBorTop + scr->Font->ta_YSize + 1;
@@ -239,8 +388,9 @@ static int okno(int test_ms)
     y = gap;
 
     for (i = 0; i < O_COUNT; i++) {
-        ng.ng_LeftEdge = leftb + lm + labw;
-        ng.ng_TopEdge = topb + y;
+        int kol = (i < 4) ? 0 : 1, wiersz = (i < 4) ? i : i - 4;
+        ng.ng_LeftEdge = leftb + lm + labw + kol * (labw + gadw + cw * 3);
+        ng.ng_TopEdge = topb + y + wiersz * (gh + 2);
         ng.ng_Width = gadw;
         ng.ng_Height = gh;
         ng.ng_GadgetText = (STRPTR)OPCJE[i].etykieta;
@@ -250,21 +400,21 @@ static int okno(int test_ms)
                            GTCY_Labels, (ULONG)etyk[i],
                            GTCY_Active, (ULONG)wart[i], TAG_END);
         cykl[i] = gad;
-        y += gh + 2;
-
-        ng.ng_LeftEdge = leftb + lm;
-        ng.ng_TopEdge = topb + y;
-        ng.ng_Width = innerw - lm * 2;
-        ng.ng_Height = fh;
-        ng.ng_GadgetText = NULL;
-        ng.ng_GadgetID = GID_PODP + i;
-        ng.ng_Flags = 0;
-        gad = CreateGadget(TEXT_KIND, gad, &ng,
-                           GTTX_Text, (ULONG)OPCJE[i].podpowiedz[wart[i]], TAG_END);
-        podp[i] = gad;
-        y += fh + gap;
     }
-    y += gap;
+    y += 4 * (gh + 2) + gap;
+
+    /* wspolna podpowiedz: opis opcji zmienionej ostatnio */
+    ng.ng_LeftEdge = leftb + lm;
+    ng.ng_TopEdge = topb + y;
+    ng.ng_Width = innerw - lm * 2;
+    ng.ng_Height = fh;
+    ng.ng_GadgetText = NULL;
+    ng.ng_GadgetID = GID_PODP;
+    ng.ng_Flags = 0;
+    gad = CreateGadget(TEXT_KIND, gad, &ng,
+                       GTTX_Text, (ULONG)OPCJE[0].podpowiedz[wart[0]], TAG_END);
+    for (i = 0; i < O_COUNT; i++) podp[i] = gad;
+    y += fh + gap + 2;
 
     ng.ng_LeftEdge = leftb + lm;
     ng.ng_TopEdge = topb + y;
@@ -278,6 +428,11 @@ static int okno(int test_ms)
     ng.ng_TopEdge = topb + y;
     ng.ng_GadgetID = 41;
     gad = CreateGadget(TEXT_KIND, gad, &ng, GTTX_Text, (ULONG)KLAWISZE, TAG_END);
+    y += fh + 2;
+    ng.ng_TopEdge = topb + y;
+    ng.ng_GadgetID = GID_STATUS;
+    gad = CreateGadget(TEXT_KIND, gad, &ng, GTTX_Text, (ULONG)stan, TAG_END);
+    status = gad;
     y += fh + gap + gap;
 
     btnw = szer(scr, "Cancel") + cw * 4;
@@ -293,6 +448,11 @@ static int okno(int test_ms)
     ng.ng_LeftEdge = leftb + innerw - lm - btnw;
     ng.ng_GadgetText = (STRPTR)"Cancel";
     ng.ng_GadgetID = GID_CANCEL;
+    gad = CreateGadget(BUTTON_KIND, gad, &ng, TAG_END);
+    ng.ng_Width = szer(scr, "Convert music") + cw * 4;
+    ng.ng_LeftEdge = leftb + (innerw - ng.ng_Width) / 2;
+    ng.ng_GadgetText = (STRPTR)"Convert music";
+    ng.ng_GadgetID = GID_KONW;
     gad = CreateGadget(BUTTON_KIND, gad, &ng, TAG_END);
     y += gh + gap;
     innerh = y;
@@ -328,6 +488,13 @@ static int okno(int test_ms)
                (int)win->Width, (int)win->Height, (int)scr->Width, (int)scr->Height);
         fflush(stdout);
     }
+    if (test_ms > 0) zrzut(scr, "prefs-okno.ppm");
+    if (test_konw) {
+        printf("remom-prefs: test konwersji - musicrate=%d, %ld Hz\n", wart[O_MRATE], wybrana_czestotliwosc());
+        konwertuj_okno(win, status);
+        zrzut(scr, "prefs-konw.ppm");
+        printf("remom-prefs: po konwersji w oknie\n");
+    }
 
     while (!koniec) {
         struct IntuiMessage *msg;
@@ -359,6 +526,8 @@ static int okno(int test_ms)
                                       GTTX_Text, (ULONG)OPCJE[i].podpowiedz[wart[i]], TAG_END);
                 } else if (src->GadgetID == GID_SAVE) {
                     wynik = 1; koniec = 1;
+                } else if (src->GadgetID == GID_KONW) {
+                    konwertuj_okno(win, status);
                 } else if (src->GadgetID == GID_CANCEL) {
                     wynik = 0; koniec = 1;
                 }
@@ -375,6 +544,7 @@ static int okno(int test_ms)
                 }
                 if (code == 's' || code == 'S' || code == 13) { wynik = 1; koniec = 1; }
                 if (code == 27) { wynik = 0; koniec = 1; }
+                if (code == 'c' || code == 'C') konwertuj_okno(win, status);
                 break;
             default:
                 break;
@@ -422,6 +592,7 @@ static void pomoc(void)
     printf("remom-prefs - Amiga settings for Master of Magic\n\n");
     printf("  remom-prefs              open the window\n");
     printf("  remom-prefs SHOW         print the settings and this machine\n");
+    printf("  remom-prefs CONVERT      convert the music (add MUSICRATE=22kHz for 22 kHz)\n");
     for (i = 0; i < O_COUNT; i++) {
         printf("  remom-prefs %s=", OPCJE[i].arg);
         for (j = 0; j < OPCJE[i].ile; j++) printf("%s%s", j ? "|" : "", OPCJE[i].nazwy[j]);
@@ -432,7 +603,7 @@ static void pomoc(void)
 
 int main(int argc, char **argv)
 {
-    int i, j, zmiana = 0, show = 0, test_ms = 0, r;
+    int i, j, zmiana = 0, show = 0, test_ms = 0, test_konw = 0, konw = 0, r;
 
     wczytaj();
 
@@ -442,6 +613,9 @@ int main(int argc, char **argv)
         if (argv[i][0] == '?' || rowne(argv[i], "HELP")) { pomoc(); return 0; }
         if (rowne(argv[i], "SHOW")) { show = 1; continue; }
         if (rowne(argv[i], "TESTWINDOW")) { test_ms = 3000; continue; }
+        if (rowne(argv[i], "TESTCONVERT")) { test_ms = 3000; test_konw = 1; continue; }
+        if (rowne(argv[i], "CONVERT")) { konw = 1; continue; }
+        if (strncmp(argv[i], "CONVERTMAX=", 11) == 0) { konw_max = atoi(argv[i] + 11); continue; }
         eq = strchr(argv[i], '=');
         if (eq != NULL) {
             int ok = 0;
@@ -474,8 +648,9 @@ int main(int argc, char **argv)
         }
         pokaz();
         printf("saved to " PLIK "\n");
-        return 0;
+        if (!konw) return 0;
     }
+    if (konw) return konwertuj_shell();
     if (show) { pokaz(); return 0; }
 
     GadToolsBase = OpenLibrary((CONST_STRPTR)"gadtools.library", 37L);
@@ -484,7 +659,7 @@ int main(int argc, char **argv)
         pomoc();
         return 20;
     }
-    r = okno(test_ms);
+    r = okno(test_ms, test_konw);
     CloseLibrary(GadToolsBase);
     GadToolsBase = NULL;
 

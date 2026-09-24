@@ -31,7 +31,7 @@ import subprocess
 import sys
 import tempfile
 
-RATE = 11025
+RATE = int(os.environ.get("RATE", "11025"))   # RATE=22050 dla 22 kHz (2026-09-24)
 BLOCK_ALIGN = 1024
 SPB = (BLOCK_ALIGN - 4) * 2 + 1        # 2041 probek na blok
 MAX_SEKUND = 15 * 60

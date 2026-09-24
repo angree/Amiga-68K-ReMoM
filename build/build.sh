@@ -283,7 +283,12 @@ m68k-amigaos-gcc $NATIVE_FLAGS -O2 -o "$WORK/wbstart" "$NATIVE/remom/wbstart.c" 
 cmp -s "$WORK/wbstart" "$DEPLOY/wbstart" || cp "$WORK/wbstart" "$DEPLOY/wbstart"
 # remom-prefs (native/remom/remom-prefs.c): ustawienia w oknie Workbencha,
 # wzor: tools/gtaprefs.c z portu AmiGTA
-m68k-amigaos-gcc $NATIVE_FLAGS -O2 -o "$WORK/remom-prefs" "$NATIVE/remom/remom-prefs.c" 2>"$WORK/warn/remom-prefs.txt" || {
+# + konwerter muzyki (native/remom/muzyka_konw.c) z konwerterem XMIDI ReMoM
+# wycietym mechanicznie (build/xmi2mid-gen.py ... biblioteka) - 2026-09-24
+python3 "$WORK/buildscripts/xmi2mid-gen.py" "$WORK/stage/ReMoM" "$WORK/xmid-amiga.c" biblioteka >/dev/null
+m68k-amigaos-gcc $NATIVE_FLAGS -O2 -w -I"$WORK/stage/ReMoM/platform/sdl2" -c -o "$WORK/xmid-amiga.o" "$WORK/xmid-amiga.c" 2>"$WORK/warn/xmid-amiga.txt" || {
+	log "BLAD KOMPILACJI: xmid-amiga.c"; cat "$WORK/warn/xmid-amiga.txt"; exit 1; }
+m68k-amigaos-gcc $NATIVE_FLAGS -O2 -o "$WORK/remom-prefs" "$NATIVE/remom/remom-prefs.c" "$NATIVE/remom/muzyka_konw.c" "$WORK/xmid-amiga.o" 2>"$WORK/warn/remom-prefs.txt" || {
 	log "BLAD KOMPILACJI: remom-prefs.c"; cat "$WORK/warn/remom-prefs.txt"; exit 1; }
 cmp -s "$WORK/remom-prefs" "$DEPLOY/remom-prefs" || cp "$WORK/remom-prefs" "$DEPLOY/remom-prefs"
 

@@ -66,5 +66,8 @@ int main(int argc, char ** argv)
     return 0;
 }
 """ % (stale, funkcje)
+if len(sys.argv) > 3 and sys.argv[3] == "biblioteka":
+    # bez main() - do linkowania z native/remom/muzyka_konw.c (remom-prefs)
+    zrodlo = zrodlo[:zrodlo.index("int main(")]
 io.open(cel, "w", encoding="latin-1", newline="\n").write(zrodlo)
 print("xmi2mid-gen: %s" % cel)

@@ -18,7 +18,8 @@ copy of Master of Magic. The GOG version works (see below).
 - AGA, or an RTG card with an 8-bit screen mode (CyberGraphX or Picasso96)
 - Kickstart and Workbench 3.1 or newer
 - 8 MB of Fast RAM, plus 2 MB of Chip RAM on AGA
-- A hard disk with about 25 MB free for the game data, or about 60 MB with music
+- A hard disk with about 25 MB free for the game data, about 60 MB with
+  11 kHz music or about 100 MB with 22 kHz music
 
 ## Installing with the GOG version
 
@@ -31,35 +32,49 @@ copy of Master of Magic. The GOG version works (see below).
    - optionally your `SAVE1.GAM` to `SAVE9.GAM`. Saves are byte-compatible
      with the PC version in both directions.
 4. Unpack the release archive into the same directory. It contains `remom`,
-   `remom-prefs` and their icons.
+   `remom-prefs`, their icons, and `remom-music.exe` for the PC.
 5. Start `remom` from its icon. To start it from a Shell, set the stack first
    with `Stack 1000000`.
 
 File names need no conversion, because AmigaOS is case-insensitive. The game
 runs without music. For music, see the next section.
 
-### Music (optional)
+### Music
 
-On the PC the music is General MIDI synthesis, which is too heavy for a 68020.
-A converter renders each track from your `*.LBX` files into IMA ADPCM files
-(11 kHz, mono) that the Amiga streams from disk. It runs on Linux or WSL:
+The PC version synthesises its music from MIDI, which is too heavy for a
+68020. The music is therefore converted once into IMA ADPCM files in a
+`muzyka` directory next to `remom`, and the game streams them from disk.
+Pick one of these ways:
 
-```sh
-sudo apt install gcc python3 libfluidsynth3 timgm6mb-soundfont
-sh build/build-host.sh                      # builds the MIDI converter from ReMoM
-DANE=/path/to/your/LBX/files sh build/muzyka-host.sh
-```
+1. **On the Amiga.** Run `remom-prefs`, choose *Music quality* (11 kHz or
+   22 kHz) and press **Convert music**. The status line shows the progress.
+   Converting all the music takes about 20 minutes at 11 kHz and about
+   40 minutes at 22 kHz on a 68040-class machine, and longer on a 68030.
+   You can stop it; pressing Convert music again continues where it stopped.
+   From a Shell: `remom-prefs MUSICRATE=22kHz CONVERT`.
+2. **On a PC, quick.** Run `remom-music.exe` (in the release) in the folder
+   that contains `MUSIC.LBX`: `remom-music.exe 22` or `remom-music.exe 11`.
+   It takes a few seconds. Copy the new `muzyka` folder next to `remom`.
+3. **On a PC, best quality.** On Linux or WSL, the fluidsynth renderer uses a
+   real General MIDI soundfont:
 
-The files are written to `muzyka/` in the `DANE` directory (116 files, about
-32 MB). Copy that `muzyka` directory next to `remom` on the Amiga. To use a
-different General MIDI soundfont, set `SF=/path/to/file.sf2`.
+   ```sh
+   sudo apt install gcc python3 libfluidsynth3 timgm6mb-soundfont
+   sh build/build-host.sh
+   RATE=22050 DANE=/path/to/your/LBX/files sh build/muzyka-host.sh
+   ```
+
+Options 1 and 2 use the same small built-in synthesiser, so the music
+sounds like a simple tracker module rather than a soundfont. 22 kHz sounds
+clearer, takes twice the disk space (about 75 MB instead of 37 MB) and
+needs a little more CPU in the game.
 
 ## Options
 
 `remom-prefs` is a small Workbench program for the settings: graphics (AGA or
 RTG), video mode (Auto, PAL or NTSC), screen title bar, FPS on the bar, system
-pointer and music. The same options are available in the game's main menu
-under **Amiga Options**. Settings are saved to `amiga.cfg`.
+pointer, music and music quality. It also converts the music. The other
+options are also in the game's main menu under **Amiga Options**. Settings are saved to `amiga.cfg`.
 
 ## Building from source
 
