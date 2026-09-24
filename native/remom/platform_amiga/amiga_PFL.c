@@ -70,7 +70,7 @@
 #define AMIGA_CURSOR_DIM   16      /* MOM_DEF.h CURSOR_WIDTH / CURSOR_HEIGHT */
 #define AMIGA_WARP_GUARD_MS 100    /* jak Platform_Set_Warp_Guard() w SDL2 */
 
-#define AMIGA_TYTUL "Master of Magic"   /* pasek ekranu i okno */
+#define AMIGA_TYTUL "Master of Magic 0.2.1"   /* pasek ekranu i okno; wersja portu (developer 2026-09-24) */
 
 #define AMIGA_GFX_DEFAULT  (-2)
 #define AMIGA_GFX_NONE     (-1)
@@ -459,7 +459,7 @@ int Platform_Get_Scale(void)
     return 1;
 }
 
-/* PFL_Perf.c ustawia co sekunde "<tytul> - N fps (worst M ms)". Opcja
+/* PFL_Perf.c ustawia co sekunde "<tytul> - N fps". Opcja
    fps=0 (remom-prefs "FPS on title bar") zostawia na pasku sam tytul. */
 void Platform_Set_Window_Title(const char * title)
 {

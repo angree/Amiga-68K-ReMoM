@@ -898,6 +898,16 @@ def latki_menu_amigi():
     zamien(rel, "        if(line_top > 88)", "        if(line_top > 76)  /* AMIGA: 88 */", ile=1)
     zamien(rel, "(line_top - 88)", "(line_top - 76)", ile=1)
     zamien(rel, "_credits_y = 95;", "_credits_y = 83;  /* AMIGA: 95 */", ile=2)
+    # developer 2026-09-24: na poczatku creditsow autor ReMoM i port na Amige
+    zamien(rel, "#define CREDITS_COUNT 48", "#define CREDITS_COUNT 52  /* AMIGA: 48 + 4 linie portu */", ile=1)
+    zamien(rel,
+           "static char * credit_strings[CREDITS_COUNT][2] = {\n    {\"Game Designer\", \"Steve Barcia\"},",
+           "static char * credit_strings[CREDITS_COUNT][2] = {\n"
+           "    {\"PC Reassembly\", \"Jim Balcomb\"},  /* AMIGA */\n"
+           "    {\"\", \"\"},\n"
+           "    {\"Amiga Port\", \"Grzegorz Korycki\"},\n"
+           "    {\"\", \"\"},\n"
+           "    {\"Game Designer\", \"Steve Barcia\"},", ile=1)
 
 
 def latki_bez_float():
@@ -950,8 +960,8 @@ def latki_bez_float():
     zamien(rel,
            "        snprintf(title, sizeof(title), \"%s - %.1f fps (worst %u ms)\",\n"
            "                 m_live_base_title, fps, (unsigned)m_live_window_worst_ms);\n",
-           "        snprintf(title, sizeof(title), \"%s - %u.%u fps (worst %u ms)\",\n"
-           "                 m_live_base_title, fps10 / 10u, fps10 % 10u, (unsigned)m_live_window_worst_ms);\n",
+           "        snprintf(title, sizeof(title), \"%s - %u.%u fps\",  /* AMIGA: bez worst ms (developer 2026-09-24) */\n"
+           "                 m_live_base_title, fps10 / 10u, fps10 % 10u);\n",
            ile=1)
     zamien(rel,
            "\"[PERF-LIVE] %.1f fps  frame_ms p50=%u p95=%u p99=%u max=%u (last %u)  interval_over=%u/%u  work_over=%u/%u  ticks=%u idle=%u  (budget %d ms)\",\n"

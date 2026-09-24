@@ -106,8 +106,8 @@ static const opcja_t OPCJE[O_COUNT] = {
         "Music streamed from the muzyka drawer.", NULL, NULL }, 1 },
     { "musicrate", "Music quality:", "MUSICRATE", 'R', 2,
       { "11kHz", "22kHz", NULL, NULL, NULL },
-      { "Convert music at 11 kHz: less disk space and CPU.",
-        "Convert music at 22 kHz: clearer, twice the disk space.", NULL, NULL }, 0 },
+      { "Convert at 11 kHz: needs about 32 MB of disk space.",
+        "Convert at 22 kHz: clearer, needs about 63 MB of disk space.", NULL, NULL }, 0 },
 };
 
 static int wart[O_COUNT];
@@ -229,8 +229,8 @@ static void stan_muzyki(char *dst, int cap)
         UnLock(l);
     }
     CurrentDir(stary);
-    if (n > 0) snprintf(dst, (size_t)cap, "Music: %d files converted. Convert again to finish or change quality.", n);
-    else snprintf(dst, (size_t)cap, "Music: not converted yet - press \"Convert music\".");
+    if (n > 0) snprintf(dst, (size_t)cap, "Music: %d files. Converting again needs 32 MB (11 kHz) or 63 MB (22 kHz).", n);
+    else snprintf(dst, (size_t)cap, "Music: not converted yet. Needs 32 MB (11 kHz) or 63 MB (22 kHz).");
     dst[cap - 1] = 0;
 }
 
