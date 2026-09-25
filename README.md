@@ -29,7 +29,9 @@ copy of Master of Magic. The GOG version works (see below).
 3. Copy these files to one directory on the Amiga, for example `Games:MoM/`:
    - all `*.LBX` files (about 23 MB)
    - `CONFIG.MOM`
-   - `FAT.AD`, if you want AdLib music (see Music below)
+   - `FAT.AD`, if you want AdLib music (see Music below). It is in the same
+     GOG folder as `MAGIC.EXE` and the LBX files; in the GOG version that is
+     `Master of Magic Official Release`.
    - optionally your `SAVE1.GAM` to `SAVE9.GAM`. Saves are byte-compatible
      with the PC version in both directions.
 4. Unpack the release archive into the same directory. It contains `remom`,
@@ -53,7 +55,9 @@ streams them from disk. There are two synthesisers (*Music synth*):
   sounds like a simple tracker module.
 - **AdLib**: FM synthesis (an OPL2 emulation) with the game's own AdLib
   instruments, which sounds close to the DOS version on an AdLib card. It
-  needs `FAT.AD` from the game's folder next to `remom`.
+  needs `FAT.AD` (the game's AdLib instrument bank, 3.5 KB) next to `remom`.
+  Copy it from the GOG folder `Master of Magic Official Release`, where it
+  lies next to `MAGIC.EXE` and the LBX files.
 
 You can convert in two ways:
 
