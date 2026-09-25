@@ -1,0 +1,44 @@
+; run-remom-konwersja-pelna - PELNA konwersja muzyki (22 kHz) z pomiarem czasu
+; (czy sie miesci), konwersja z Shella z pomiarem czasu, konwersja w oknie
+; ze zrzutem, gra na przekonwertowanej muzyce. Muzyka i amiga.cfg gracza
+; odlozone na czas testu (muzyka -> muzyka-gracz), wynik zostaje w muzyka-test.
+FailAt 1000000
+Stack 1000000
+CD Work:
+Delete >NIL: Work:reset.flag
+Run >NIL: Work:straznik
+LoadWB
+Delete >NIL: Work:mom.done
+If EXISTS Work:amiga.cfg
+  Copy Work:amiga.cfg Work:amiga.cfg-gracz
+EndIf
+Delete >NIL: Work:amiga.cfg
+If EXISTS Work:muzyka
+  If NOT EXISTS Work:muzyka-gracz
+    Rename Work:muzyka Work:muzyka-gracz
+  EndIf
+EndIf
+Delete >NIL: Work:muzyka Work:muzyka-test ALL QUIET
+Delete >NIL: Work:prefs-okno.ppm Work:prefs-konw.ppm
+Echo >Work:mom.log "== pelna konwersja z Shella, 22 kHz"
+Date >>Work:mom.log
+remom-prefs MUSICRATE=22kHz CONVERT >>Work:mom.log
+Date >>Work:mom.log
+List Work:muzyka NODATES LFORMAT="%N %L" >Work:muzyka-lista.txt
+Echo >>Work:mom.log "== gra"
+Echo >Work:autoinput.on "on"
+Copy Work:autoinput-wb.txt Work:autoinput.txt
+remom >Work:mom-gra.log
+Set PRC $RC
+Delete >NIL: Work:autoinput.on
+Type Work:mom-gra.log >>Work:mom.log
+Rename Work:muzyka Work:muzyka-test
+If EXISTS Work:muzyka-gracz
+  Rename Work:muzyka-gracz Work:muzyka
+EndIf
+Delete >NIL: Work:amiga.cfg
+If EXISTS Work:amiga.cfg-gracz
+  Copy Work:amiga.cfg-gracz Work:amiga.cfg
+  Delete >NIL: Work:amiga.cfg-gracz
+EndIf
+Echo >Work:mom.done "rc=$PRC"

@@ -114,7 +114,7 @@ REMOM_DEFS="-D__AMIGA__ -DNO_SOUND_LIBRARY -DMOUSE_DEBUG -DNDEBUG -DSTU_LOG_MIN_
 # natywnej, a potem przelacza wszystkie struktury silnika na little-endian.
 REMOM_INCS="-include $NATIVE/remom/amiga_le.h -I$SRC/platform/include -I$SRC/src -I$WORK/gen -I$NATIVE"
 REMOM_FLAGS="$COMMON -std=gnu99 $REMOM_DEFS $REMOM_INCS"
-NATIVE_FLAGS="$COMMON -std=gnu99 -D__AMIGA__ -I$NATIVE -I$NATIVE/cgx-include"
+NATIVE_FLAGS="$COMMON -std=gnu99 -D__AMIGA__ -I$NATIVE -I$NATIVE/cgx-include -I$NATIVE/camd-include"
 LIBS="-lamiga -lm"
 
 OBJ=$WORK/obj
@@ -217,10 +217,15 @@ sh "$WORK/buildscripts/cc-one.sh" "$SRC" "src/ReMoM.c" "$OBJ"
 # amiga_Req.c ciagnie naglowki systemu - bez wymuszonego amiga_le.h;
 # amiga_gfx.c to warstwa z portu OpenXcom.
 export CC_FLAGS="$NATIVE_FLAGS"
-for f in remom/platform_amiga/amiga_Req.c amiga_gfx.c amiga_audio.c amiga_adpcm.c remom/platform_amiga/amiga_Domyslny_aga.c; do
+for f in remom/platform_amiga/amiga_Req.c amiga_gfx.c amiga_audio.c amiga_adpcm.c amiga_camd.c remom/platform_amiga/amiga_Domyslny_aga.c; do
 	sh "$WORK/buildscripts/cc-one.sh" "$NATIVE" "$f" "$OBJ"
 done
-REMOM_BACKEND="$REMOM_BACKEND $OBJ/remom_platform_amiga_amiga_Req.c.o $OBJ/amiga_gfx.c.o $OBJ/amiga_audio.c.o $OBJ/amiga_adpcm.c.o"
+REMOM_BACKEND="$REMOM_BACKEND $OBJ/remom_platform_amiga_amiga_Req.c.o $OBJ/amiga_gfx.c.o $OBJ/amiga_audio.c.o $OBJ/amiga_adpcm.c.o $OBJ/amiga_camd.c.o $WORK/xmid-amiga.o"
+# MIDI przez camd.library (native/amiga_camd.c z portu OpenTTD) + konwerter
+# XMIDI ReMoM wyciety mechanicznie (build/xmi2mid-gen.py ... biblioteka) - 0.3.0
+python3 "$WORK/buildscripts/xmi2mid-gen.py" "$WORK/stage/ReMoM" "$WORK/xmid-amiga.c" biblioteka >/dev/null
+m68k-amigaos-gcc $NATIVE_FLAGS -O2 -w -I"$WORK/stage/ReMoM/platform/sdl2" -c -o "$WORK/xmid-amiga.o" "$WORK/xmid-amiga.c" 2>"$WORK/warn/xmid-amiga.txt" || {
+	log "BLAD KOMPILACJI: xmid-amiga.c"; cat "$WORK/warn/xmid-amiga.txt"; exit 1; }
 # c2p Kalmsa w skladni Motoroli - vasm z amiga-gcc
 if [ ! -f "$OBJ/c2p_glue.o" ] || [ "$NATIVE/c2p_glue.s" -nt "$OBJ/c2p_glue.o" ]; then
 	vasmm68k_mot -Fhunk -m68020 -no-opt -I/opt/amiga/m68k-amigaos/ndk-include -I"$NATIVE" \
@@ -285,9 +290,6 @@ cmp -s "$WORK/wbstart" "$DEPLOY/wbstart" || cp "$WORK/wbstart" "$DEPLOY/wbstart"
 # wzor: tools/gtaprefs.c z portu AmiGTA
 # + konwerter muzyki (native/remom/muzyka_konw.c) z konwerterem XMIDI ReMoM
 # wycietym mechanicznie (build/xmi2mid-gen.py ... biblioteka) - 2026-09-24
-python3 "$WORK/buildscripts/xmi2mid-gen.py" "$WORK/stage/ReMoM" "$WORK/xmid-amiga.c" biblioteka >/dev/null
-m68k-amigaos-gcc $NATIVE_FLAGS -O2 -w -I"$WORK/stage/ReMoM/platform/sdl2" -c -o "$WORK/xmid-amiga.o" "$WORK/xmid-amiga.c" 2>"$WORK/warn/xmid-amiga.txt" || {
-	log "BLAD KOMPILACJI: xmid-amiga.c"; cat "$WORK/warn/xmid-amiga.txt"; exit 1; }
 m68k-amigaos-gcc $NATIVE_FLAGS -O2 -o "$WORK/remom-prefs" "$NATIVE/remom/remom-prefs.c" "$NATIVE/remom/muzyka_konw.c" "$WORK/xmid-amiga.o" 2>"$WORK/warn/remom-prefs.txt" || {
 	log "BLAD KOMPILACJI: remom-prefs.c"; cat "$WORK/warn/remom-prefs.txt"; exit 1; }
 cmp -s "$WORK/remom-prefs" "$DEPLOY/remom-prefs" || cp "$WORK/remom-prefs" "$DEPLOY/remom-prefs"

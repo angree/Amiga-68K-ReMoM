@@ -12,7 +12,8 @@ typedef struct konw konw_t;
 
 /* katalog wyjsciowy musi istniec; rate 11025 albo 22050; max_utworow 0 = wszystkie.
    NULL = brak MUSIC.LBX albo pamieci (powod w bledzie). */
-konw_t * Konw_Start(const char * katalog, long rate, int max_utworow, char * blad, int cap);
+/* synth: 0 prosty syntezator, 1 AdLib (OPL2, barwy z FAT.AD w katalogu biezacym) */
+konw_t * Konw_Start(const char * katalog, long rate, int synth, int max_utworow, char * blad, int cap);
 
 /* kawalek pracy (ok. 0,1-0,3 s na 68030). 1 = jest dalej, 0 = koniec, -1 = blad.
    status: tekst dla gracza, po angielsku. */

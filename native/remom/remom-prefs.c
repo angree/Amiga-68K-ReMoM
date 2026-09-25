@@ -52,7 +52,7 @@
 #include "muzyka_konw.h"
 
 static const char verstag[] __attribute__((used)) =
-    "$VER: remom-prefs 1.1 (24.09.2026)";
+    "$VER: remom-prefs 0.3.0 (25.09.2026)";
 
 #define PLIK "PROGDIR:amiga.cfg"
 
@@ -62,7 +62,7 @@ struct Library *GadToolsBase = NULL;
 /*  Ustawienia                                                              */
 /* ------------------------------------------------------------------------ */
 
-enum { O_GFX, O_VIDEO, O_BAR, O_FPS, O_CURSOR, O_MUSIC, O_MRATE, O_COUNT };
+enum { O_GFX, O_VIDEO, O_BAR, O_FPS, O_CURSOR, O_MUSIC, O_MRATE, O_SYNTH, O_COUNT };
 
 typedef struct
 {
@@ -100,14 +100,19 @@ static const opcja_t OPCJE[O_COUNT] = {
       { "Game", "System", NULL, NULL, NULL },
       { "The game's own mouse cursor.",
         "The Workbench pointer - smooth at 50 Hz.", NULL, NULL }, 0 },
-    { "music", "Music:", "MUSIC", 'M', 2,
-      { "Off", "On", NULL, NULL, NULL },
+    { "music", "Music:", "MUSIC", 'M', 3,
+      { "Off", "Files", "MIDI", NULL, NULL },
       { "No music (sound effects stay). Saves some CPU.",
-        "Music streamed from the muzyka drawer.", NULL, NULL }, 1 },
+        "Converted music files from the muzyka drawer.",
+        "MIDI via camd.library to an external synth (GM or MT-32 module).", NULL }, 1 },
     { "musicrate", "Music quality:", "MUSICRATE", 'R', 2,
       { "11kHz", "22kHz", NULL, NULL, NULL },
       { "Convert at 11 kHz: needs about 32 MB of disk space.",
         "Convert at 22 kHz: clearer, needs about 63 MB of disk space.", NULL, NULL }, 0 },
+    { "synth", "Music synth:", "SYNTH", 'Y', 2,
+      { "Simple", "AdLib", NULL, NULL, NULL },
+      { "Convert with the small built-in synthesiser.",
+        "Convert with AdLib FM and the game's own instruments (needs FAT.AD).", NULL, NULL }, 0 },
 };
 
 static int wart[O_COUNT];
@@ -186,8 +191,9 @@ static void opis_maszyny(char *dst, int cap)
 #define GID_SAVE  30
 #define GID_CANCEL 31
 
-#define KLAWISZE "Keys: G V B F P M R change  C convert  S save  Esc"
+#define KLAWISZE "Keys: G V B F P M R Y change  C convert  D delete  S save"
 #define GID_KONW 32
+#define GID_KASUJ 33
 #define GID_STATUS 42
 
 /* ------------------------------------------------------------------------ */
@@ -265,7 +271,7 @@ static void konwertuj_okno(struct Window *win, struct Gadget *st)
     char blad[128];
     char poprzedni[128];
     BPTR stary = przejdz_do_gry();
-    konw_t *k = Konw_Start("muzyka", wybrana_czestotliwosc(), konw_max, blad, (int)sizeof blad);
+    konw_t *k = Konw_Start("muzyka", wybrana_czestotliwosc(), wart[O_SYNTH], konw_max, blad, (int)sizeof blad);
     int r = 1, przerwij = 0;
     if (k == NULL) {
         CurrentDir(stary);
@@ -298,6 +304,77 @@ static void konwertuj_okno(struct Window *win, struct Gadget *st)
     GT_SetGadgetAttrs(st, win, NULL, GTTX_Text, (ULONG)tekst, TAG_END);
 }
 
+/* ---- kasowanie muzyki (0.3.0) ------------------------------------------
+   Tylko muzyka/#?.wav i pozostalosci konw*.tmp - nic innego z katalogu gry.
+   Nazwy zbierane najpierw, kasowane potem: DeleteFile w trakcie ExNext
+   psuje przegladanie katalogu. */
+static int muzyka_pliki(int kasuj)
+{
+    BPTR stary = CurrentDir(GetProgramDir());
+    BPTR l = Lock((CONST_STRPTR)"muzyka", ACCESS_READ);
+    int n = 0;
+    if (l != 0) {
+        struct FileInfoBlock *fib = (struct FileInfoBlock *)AllocDosObject(DOS_FIB, NULL);
+        char (*nazwy)[32] = (char (*)[32])malloc(512 * 32);
+        int ile = 0, i;
+        if (fib != NULL && nazwy != NULL && Examine(l, fib)) {
+            while (ExNext(l, fib) && ile < 512) {
+                char *nm = (char *)fib->fib_FileName;
+                size_t d = strlen(nm);
+                if (fib->fib_DirEntryType < 0 && d > 4 && d < 32
+                    && (rowne(nm + d - 4, ".wav") || rowne(nm + d - 4, ".tmp")))
+                    strcpy(nazwy[ile++], nm);
+            }
+        }
+        if (kasuj) {
+            BPTR st2 = CurrentDir(l);
+            for (i = 0; i < ile; i++) if (DeleteFile((CONST_STRPTR)nazwy[i])) n++;
+            CurrentDir(st2);
+        } else {
+            n = ile;
+        }
+        free(nazwy);
+        if (fib != NULL) FreeDosObject(DOS_FIB, fib);
+        UnLock(l);
+    }
+    CurrentDir(stary);
+    return n;
+}
+
+/* pytanie przed kasowaniem - zeby missclick nie zabral 40 minut konwersji.
+   test: requester pokazany, zrzut prefs-kasuj.ppm, zamkniety bez kasowania. */
+static int potwierdz_kasowanie(struct Window *win, int n, int test)
+{
+    struct EasyStruct es;
+    LONG arg[1];
+    es.es_StructSize = sizeof es;
+    es.es_Flags = 0;
+    es.es_Title = (UBYTE *)"Master of Magic - Delete music";
+    es.es_TextFormat = (UBYTE *)"Delete all %ld converted music files?\nThis cannot be undone.";
+    es.es_GadgetFormat = (UBYTE *)"Delete|Cancel";
+    arg[0] = n;
+    if (test) {
+        struct Window *rw = BuildEasyRequestArgs(win, &es, 0, arg);
+        if (rw != NULL && (ULONG)rw > 1) {
+            Delay(50);
+            zrzut(win->WScreen, "prefs-kasuj.ppm");
+            FreeSysRequest(rw);
+        }
+        return 0;
+    }
+    return EasyRequestArgs(win, &es, NULL, arg) == 1;
+}
+
+static void kasuj_okno(struct Window *win, struct Gadget *st, int test)
+{
+    static char tekst[96];
+    int n = muzyka_pliki(0);
+    if (n == 0) snprintf(tekst, sizeof tekst, "No converted music to delete.");
+    else if (!potwierdz_kasowanie(win, n, test)) snprintf(tekst, sizeof tekst, "Delete cancelled - the music files stay.");
+    else snprintf(tekst, sizeof tekst, "Deleted %d music files.", muzyka_pliki(1));
+    GT_SetGadgetAttrs(st, win, NULL, GTTX_Text, (ULONG)tekst, TAG_END);
+}
+
 /* linia polecen: CONVERT */
 static int konwertuj_shell(void)
 {
@@ -305,7 +382,7 @@ static int konwertuj_shell(void)
     char blad[128];
     int ostatni = -1, r;
     BPTR stary = przejdz_do_gry();
-    konw_t *k = Konw_Start("muzyka", wybrana_czestotliwosc(), konw_max, blad, (int)sizeof blad);
+    konw_t *k = Konw_Start("muzyka", wybrana_czestotliwosc(), wart[O_SYNTH], konw_max, blad, (int)sizeof blad);
     if (k == NULL) { CurrentDir(stary); printf("remom-prefs: %s\n", blad); return 20; }
     printf("Converting %d music tracks at %ld Hz (Ctrl-C stops)...\n", Konw_Ile(k), wybrana_czestotliwosc());
     while ((r = Konw_Krok(k, tekst, (int)sizeof tekst)) > 0) {
@@ -325,7 +402,7 @@ static int szer(struct Screen *scr, const char *s)
 
 /* 1 = zapisz, 0 = anuluj, -1 = okno sie nie otworzylo.
    test_ms > 0: okno otwiera sie, po tym czasie zamyka bez zapisu (test). */
-static int okno(int test_ms, int test_konw)
+static int okno(int test_ms, int test_konw, int test_kasuj)
 {
     struct Screen *scr;
     APTR vi;
@@ -377,6 +454,13 @@ static int okno(int test_ms, int test_konw)
     if (lm + szer(scr, maszyna) + lm > innerw) innerw = lm + szer(scr, maszyna) + lm;
     if (lm + szer(scr, KLAWISZE) + lm > innerw) innerw = lm + szer(scr, KLAWISZE) + lm;
     if (lm + szer(scr, stan) + lm > innerw) innerw = lm + szer(scr, stan) + lm;
+    {   /* cztery przyciski w jednym rzedzie: Save, Convert, Delete, Cancel */
+        int b = szer(scr, "Cancel") + cw * 4;
+        int rzad;
+        if (b < cw * 10) b = cw * 10;
+        rzad = lm * 2 + b * 2 + szer(scr, "Convert music") + szer(scr, "Delete music") + cw * 14;
+        if (rzad > innerw) innerw = rzad;
+    }
 
     leftb = scr->WBorLeft;
     topb = scr->WBorTop + scr->Font->ta_YSize + 1;
@@ -450,9 +534,14 @@ static int okno(int test_ms, int test_konw)
     ng.ng_GadgetID = GID_CANCEL;
     gad = CreateGadget(BUTTON_KIND, gad, &ng, TAG_END);
     ng.ng_Width = szer(scr, "Convert music") + cw * 4;
-    ng.ng_LeftEdge = leftb + (innerw - ng.ng_Width) / 2;
+    ng.ng_LeftEdge = leftb + lm + btnw + cw * 2;
     ng.ng_GadgetText = (STRPTR)"Convert music";
     ng.ng_GadgetID = GID_KONW;
+    gad = CreateGadget(BUTTON_KIND, gad, &ng, TAG_END);
+    ng.ng_Width = szer(scr, "Delete music") + cw * 4;
+    ng.ng_LeftEdge = leftb + innerw - lm - btnw - cw * 2 - ng.ng_Width;
+    ng.ng_GadgetText = (STRPTR)"Delete music";
+    ng.ng_GadgetID = GID_KASUJ;
     gad = CreateGadget(BUTTON_KIND, gad, &ng, TAG_END);
     y += gh + gap;
     innerh = y;
@@ -489,6 +578,7 @@ static int okno(int test_ms, int test_konw)
         fflush(stdout);
     }
     if (test_ms > 0) zrzut(scr, "prefs-okno.ppm");
+    if (test_kasuj) kasuj_okno(win, status, 1);
     if (test_konw) {
         printf("remom-prefs: test konwersji - musicrate=%d, %ld Hz\n", wart[O_MRATE], wybrana_czestotliwosc());
         konwertuj_okno(win, status);
@@ -526,6 +616,8 @@ static int okno(int test_ms, int test_konw)
                                       GTTX_Text, (ULONG)OPCJE[i].podpowiedz[wart[i]], TAG_END);
                 } else if (src->GadgetID == GID_SAVE) {
                     wynik = 1; koniec = 1;
+                } else if (src->GadgetID == GID_KASUJ) {
+                    kasuj_okno(win, status, 0);
                 } else if (src->GadgetID == GID_KONW) {
                     konwertuj_okno(win, status);
                 } else if (src->GadgetID == GID_CANCEL) {
@@ -545,6 +637,7 @@ static int okno(int test_ms, int test_konw)
                 if (code == 's' || code == 'S' || code == 13) { wynik = 1; koniec = 1; }
                 if (code == 27) { wynik = 0; koniec = 1; }
                 if (code == 'c' || code == 'C') konwertuj_okno(win, status);
+                if (code == 'd' || code == 'D') kasuj_okno(win, status, 0);
                 break;
             default:
                 break;
@@ -603,7 +696,7 @@ static void pomoc(void)
 
 int main(int argc, char **argv)
 {
-    int i, j, zmiana = 0, show = 0, test_ms = 0, test_konw = 0, konw = 0, r;
+    int i, j, zmiana = 0, show = 0, test_ms = 0, test_konw = 0, test_kasuj = 0, konw = 0, kasuj = 0, r;
 
     wczytaj();
 
@@ -614,6 +707,8 @@ int main(int argc, char **argv)
         if (rowne(argv[i], "SHOW")) { show = 1; continue; }
         if (rowne(argv[i], "TESTWINDOW")) { test_ms = 3000; continue; }
         if (rowne(argv[i], "TESTCONVERT")) { test_ms = 3000; test_konw = 1; continue; }
+        if (rowne(argv[i], "TESTDELETE")) { test_ms = 3000; test_kasuj = 1; continue; }
+        if (rowne(argv[i], "DELETEMUSIC")) { kasuj = 1; continue; }
         if (rowne(argv[i], "CONVERT")) { konw = 1; continue; }
         if (strncmp(argv[i], "CONVERTMAX=", 11) == 0) { konw_max = atoi(argv[i] + 11); continue; }
         eq = strchr(argv[i], '=');
@@ -650,6 +745,7 @@ int main(int argc, char **argv)
         printf("saved to " PLIK "\n");
         if (!konw) return 0;
     }
+    if (kasuj) { printf("Deleted %d music files.\n", muzyka_pliki(1)); if (!konw) return 0; }
     if (konw) return konwertuj_shell();
     if (show) { pokaz(); return 0; }
 
@@ -659,7 +755,7 @@ int main(int argc, char **argv)
         pomoc();
         return 20;
     }
-    r = okno(test_ms, test_konw);
+    r = okno(test_ms, test_konw, test_kasuj);
     CloseLibrary(GadToolsBase);
     GadToolsBase = NULL;
 

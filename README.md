@@ -29,6 +29,7 @@ copy of Master of Magic. The GOG version works (see below).
 3. Copy these files to one directory on the Amiga, for example `Games:MoM/`:
    - all `*.LBX` files (about 23 MB)
    - `CONFIG.MOM`
+   - `FAT.AD`, if you want AdLib music (see Music below)
    - optionally your `SAVE1.GAM` to `SAVE9.GAM`. Saves are byte-compatible
      with the PC version in both directions.
 4. Unpack the release archive into the same directory. It contains `remom`,
@@ -41,39 +42,54 @@ runs without music. For music, see the next section.
 
 ### Music
 
-The PC version synthesises its music from MIDI, which is too heavy for a
-68020. The music is therefore converted once into IMA ADPCM files in a
-`muzyka` directory next to `remom`, and the game streams them from disk.
-Pick one of these ways:
+`remom-prefs` sets where the music comes from (*Music*: Off, Files or MIDI).
+
+**Files.** The PC version synthesises its music from MIDI, which is too heavy
+for a 68020 in the middle of a game. The music is therefore converted once
+into IMA ADPCM files in a `muzyka` directory next to `remom`, and the game
+streams them from disk. There are two synthesisers (*Music synth*):
+
+- **Simple**: a small built-in synthesiser that needs no extra files and
+  sounds like a simple tracker module.
+- **AdLib**: FM synthesis (an OPL2 emulation) with the game's own AdLib
+  instruments, which sounds close to the DOS version on an AdLib card. It
+  needs `FAT.AD` from the game's folder next to `remom`.
+
+You can convert in two ways:
 
 1. **On the Amiga.** Run `remom-prefs`, choose *Music quality* (11 kHz or
-   22 kHz) and press **Convert music**. The status line shows the progress.
-   Converting all the music takes about 20 minutes at 11 kHz and about
-   40 minutes at 22 kHz on a 68040-class machine, and longer on a 68030.
-   You can stop it; pressing Convert music again continues where it stopped.
-   From a Shell: `remom-prefs MUSICRATE=22kHz CONVERT`.
-2. **On a PC, quick.** Run `remom-music.exe` (in the release) in the folder
-   that contains `MUSIC.LBX`: `remom-music.exe 22` or `remom-music.exe 11`.
-   It takes a few seconds. Copy the new `muzyka` folder next to `remom`.
-3. **On a PC, best quality.** On Linux or WSL, the fluidsynth renderer uses a
-   real General MIDI soundfont:
+   22 kHz) and *Music synth*, then press **Convert music**. It takes tens of
+   minutes; you can stop it and continue later. From a Shell:
+   `remom-prefs SYNTH=AdLib MUSICRATE=22kHz CONVERT`.
+2. **On a PC, in seconds.** Run `remom-music.exe 22 adlib` (or `11`, without
+   `adlib` for the simple synthesiser) in the folder that contains
+   `MUSIC.LBX` (and `FAT.AD` for AdLib). Copy the new `muzyka` folder next
+   to `remom`.
 
-   ```sh
-   sudo apt install gcc python3 libfluidsynth3 timgm6mb-soundfont
-   sh build/build-host.sh
-   RATE=22050 DANE=/path/to/your/LBX/files sh build/muzyka-host.sh
-   ```
+The music needs about 32 MB at 11 kHz or 63–67 MB at 22 kHz.
+**Delete music** in `remom-prefs` removes the converted files; it asks
+before it deletes anything.
 
-Options 1 and 2 use the same small built-in synthesiser, so the music
-sounds like a simple tracker module rather than a soundfont. 22 kHz sounds
-clearer, takes twice the disk space (about 75 MB instead of 37 MB) and
-needs a little more CPU in the game.
+**MIDI.** The game sends its music to camd.library, the AmigaOS MIDI system,
+in real time, so an external GM or MT-32 module plays it and the Amiga
+synthesises nothing. Without CAMD the notes go straight out of the serial
+port as raw MIDI. No files have to be converted for MIDI.
+
+For the best quality from files, the fluidsynth renderer on Linux or WSL
+uses a real General MIDI soundfont:
+
+```sh
+sudo apt install gcc python3 libfluidsynth3 timgm6mb-soundfont
+sh build/build-host.sh
+RATE=22050 DANE=/path/to/your/LBX/files sh build/muzyka-host.sh
+```
 
 ## Options
 
 `remom-prefs` is a small Workbench program for the settings: graphics (AGA or
 RTG), video mode (Auto, PAL or NTSC), screen title bar, FPS on the bar, system
-pointer, music and music quality. It also converts the music. The other
+pointer, music (off, files or MIDI), music quality and synthesiser. It also
+converts and deletes the music. The other
 options are also in the game's main menu under **Amiga Options**. Settings are saved to `amiga.cfg`.
 
 ## Building from source

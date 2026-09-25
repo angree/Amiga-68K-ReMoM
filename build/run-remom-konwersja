@@ -1,0 +1,60 @@
+; run-remom-konwersja - konwerter muzyki w remom-prefs (2026-09-24): zrzut okna
+; (czy sie miesci), konwersja z Shella z pomiarem czasu, konwersja w oknie
+; ze zrzutem, gra na przekonwertowanej muzyce. Muzyka i amiga.cfg gracza
+; odlozone na czas testu (muzyka -> muzyka-gracz), wynik zostaje w muzyka-test.
+FailAt 1000000
+Stack 1000000
+CD Work:
+Delete >NIL: Work:reset.flag
+Run >NIL: Work:straznik
+LoadWB
+Delete >NIL: Work:mom.done
+If EXISTS Work:amiga.cfg
+  Copy Work:amiga.cfg Work:amiga.cfg-gracz
+EndIf
+Delete >NIL: Work:amiga.cfg
+If EXISTS Work:muzyka
+  If NOT EXISTS Work:muzyka-gracz
+    Rename Work:muzyka Work:muzyka-gracz
+  EndIf
+EndIf
+Delete >NIL: Work:muzyka Work:muzyka-test ALL QUIET
+Delete >NIL: Work:prefs-okno.ppm Work:prefs-konw.ppm
+Echo >Work:mom.log "== okno (3 s, zrzut prefs-okno.ppm)"
+remom-prefs TESTWINDOW >>Work:mom.log
+Echo >>Work:mom.log "== konwersja z Shella, 22 kHz, 3 utwory"
+Date >>Work:mom.log
+remom-prefs MUSICRATE=22kHz CONVERT CONVERTMAX=3 >>Work:mom.log
+Date >>Work:mom.log
+Echo >>Work:mom.log "== konwersja z Shella, 11 kHz, 3 utwory"
+Delete >NIL: Work:muzyka/#?.wav QUIET
+remom-prefs MUSICRATE=11kHz CONVERT CONVERTMAX=3 >>Work:mom.log
+Date >>Work:mom.log
+List Work:muzyka >>Work:mom.log
+Echo >>Work:mom.log "== dwie konwersje naraz (Shell w tle + Shell)"
+Delete >NIL: Work:muzyka/#?.wav QUIET
+Run >NIL: remom-prefs CONVERT CONVERTMAX=3
+remom-prefs CONVERT CONVERTMAX=3 >>Work:mom.log
+Wait 5
+List Work:muzyka >>Work:mom.log
+Echo >>Work:mom.log "== konwersja w oknie (2 utwory, zrzut prefs-konw.ppm)"
+Type Work:amiga.cfg >>Work:mom.log
+remom-prefs TESTCONVERT CONVERTMAX=2 >>Work:mom.log
+Copy Work:menu-22k.wav Work:muzyka/539b0e7d1.wav
+Echo >>Work:mom.log "== gra"
+Echo >Work:autoinput.on "on"
+Copy Work:autoinput-wb.txt Work:autoinput.txt
+remom >Work:mom-gra.log
+Set PRC $RC
+Delete >NIL: Work:autoinput.on
+Type Work:mom-gra.log >>Work:mom.log
+Rename Work:muzyka Work:muzyka-test
+If EXISTS Work:muzyka-gracz
+  Rename Work:muzyka-gracz Work:muzyka
+EndIf
+Delete >NIL: Work:amiga.cfg
+If EXISTS Work:amiga.cfg-gracz
+  Copy Work:amiga.cfg-gracz Work:amiga.cfg
+  Delete >NIL: Work:amiga.cfg-gracz
+EndIf
+Echo >Work:mom.done "rc=$PRC"

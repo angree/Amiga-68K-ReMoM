@@ -58,6 +58,7 @@ int amiga_opt_pasek = 1;
 int amiga_opt_wideo = 0;
 int amiga_opt_grafika = 0;
 int amiga_opt_muzyka = 1;
+static char amiga_opt_reszta[256];   /* linie amiga.cfg, ktorych gra nie zna */
 int amiga_opt_fps = 1;
 static int amiga_opt_wczytane = 0;
 
@@ -85,8 +86,9 @@ void Amiga_Opcje_Wczytaj(void)
             else if(sscanf(linia, "bar=%d", &v) == 1)   { amiga_opt_pasek = (v != 0); }
             else if(sscanf(linia, "video=%d", &v) == 1) { if(v >= 0 && v <= 2) { amiga_opt_wideo = v; } }
             else if(sscanf(linia, "gfx=%d", &v) == 1)   { if(v >= 0 && v <= 3) { amiga_opt_grafika = v; } }
-            else if(sscanf(linia, "music=%d", &v) == 1) { amiga_opt_muzyka = (v != 0); }
+            else if(sscanf(linia, "music=%d", &v) == 1) { if(v >= 0 && v <= 2) { amiga_opt_muzyka = v; } }  /* 2 = MIDI (camd) */
             else if(sscanf(linia, "fps=%d", &v) == 1)   { amiga_opt_fps = (v != 0); }
+            else if(strlen(amiga_opt_reszta) + strlen(linia) < sizeof(amiga_opt_reszta)) { strcat(amiga_opt_reszta, linia); }  /* klucze remom-prefs (musicrate, synth) - oddawane przy zapisie */
         }
         fclose(f);
     }
@@ -116,6 +118,7 @@ static void Amiga_Opcje_Zapisz(void)
     }
     fprintf(f, "cursor=%d\nbar=%d\nvideo=%d\ngfx=%d\nmusic=%d\nfps=%d\n", amiga_opt_kursor, amiga_opt_pasek,
             amiga_opt_wideo, amiga_opt_grafika, amiga_opt_muzyka, amiga_opt_fps);
+    fputs(amiga_opt_reszta, f);
     fclose(f);
 }
 

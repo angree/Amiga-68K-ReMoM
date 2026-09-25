@@ -69,5 +69,7 @@ int main(int argc, char ** argv)
 if len(sys.argv) > 3 and sys.argv[3] == "biblioteka":
     # bez main() - do linkowania z native/remom/muzyka_konw.c (remom-prefs)
     zrodlo = zrodlo[:zrodlo.index("int main(")]
+    # gra ma wlasne Audio_Error__STUB (MoX/src/SOUND.c) - tu slaby zapas dla remom-prefs
+    zrodlo = zrodlo.replace("void Audio_Error__STUB(", "__attribute__((weak)) void Audio_Error__STUB(", 1)
 io.open(cel, "w", encoding="latin-1", newline="\n").write(zrodlo)
 print("xmi2mid-gen: %s" % cel)

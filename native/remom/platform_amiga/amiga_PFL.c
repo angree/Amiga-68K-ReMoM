@@ -70,7 +70,7 @@
 #define AMIGA_CURSOR_DIM   16      /* MOM_DEF.h CURSOR_WIDTH / CURSOR_HEIGHT */
 #define AMIGA_WARP_GUARD_MS 100    /* jak Platform_Set_Warp_Guard() w SDL2 */
 
-#define AMIGA_TYTUL "Master of Magic 0.2.1"   /* pasek ekranu i okno; wersja portu (developer 2026-09-24) */
+#define AMIGA_TYTUL "Master of Magic 0.3.0"   /* pasek ekranu i okno; wersja portu (developer 2026-09-24) */
 
 #define AMIGA_GFX_DEFAULT  (-2)
 #define AMIGA_GFX_NONE     (-1)

@@ -1,0 +1,60 @@
+; run-remom-030 - test wersji 0.3.0: okno remom-prefs (zrzut), konwersja AdLib
+; na Amidze (FAT.AD), requester kasowania (zrzut, bez kasowania), kasowanie
+; z Shella, gra na muzyce AdLib, gra w trybie MIDI (camd). Muzyka i amiga.cfg
+; gracza odlozone (muzyka -> muzyka-gracz) i przywracane na koncu.
+FailAt 1000000
+Stack 1000000
+CD Work:
+Delete >NIL: Work:reset.flag
+Run >NIL: Work:straznik
+LoadWB
+Delete >NIL: Work:mom.done
+If EXISTS Work:amiga.cfg
+  Copy Work:amiga.cfg Work:amiga.cfg-gracz
+EndIf
+Delete >NIL: Work:amiga.cfg
+If EXISTS Work:muzyka
+  If NOT EXISTS Work:muzyka-gracz
+    Rename Work:muzyka Work:muzyka-gracz
+  EndIf
+EndIf
+Delete >NIL: Work:muzyka ALL QUIET
+Delete >NIL: Work:prefs-okno.ppm Work:prefs-kasuj.ppm
+Echo >Work:mom.log "== okno (zrzut prefs-okno.ppm)"
+remom-prefs TESTWINDOW >>Work:mom.log
+Echo >>Work:mom.log "== AdLib 11 kHz, 3 utwory"
+Date >>Work:mom.log
+remom-prefs SYNTH=AdLib MUSICRATE=11kHz CONVERT CONVERTMAX=3 >>Work:mom.log
+Date >>Work:mom.log
+List Work:muzyka >>Work:mom.log
+Echo >>Work:mom.log "== requester kasowania (zrzut prefs-kasuj.ppm, bez kasowania)"
+remom-prefs TESTDELETE >>Work:mom.log
+List Work:muzyka >>Work:mom.log
+Echo >>Work:mom.log "== kasowanie z Shella"
+remom-prefs DELETEMUSIC >>Work:mom.log
+List Work:muzyka >>Work:mom.log
+Echo >>Work:mom.log "== gra na muzyce AdLib (utwor z menu)"
+Copy Work:menu-adlib.wav Work:muzyka/539b0e7d1.wav
+remom-prefs MUSIC=Files >>Work:mom.log
+Echo >Work:autoinput.on "on"
+Copy Work:autoinput-wb.txt Work:autoinput.txt
+remom >Work:mom-gra.log
+Type Work:mom-gra.log >>Work:mom.log
+Echo >>Work:mom.log "== gra w trybie MIDI"
+remom-prefs MUSIC=MIDI >>Work:mom.log
+Echo >Work:autoinput.on "on"
+Copy Work:autoinput-wb.txt Work:autoinput.txt
+remom >Work:mom-gra.log
+Set PRC $RC
+Delete >NIL: Work:autoinput.on
+Type Work:mom-gra.log >>Work:mom.log
+Delete >NIL: Work:muzyka ALL QUIET
+If EXISTS Work:muzyka-gracz
+  Rename Work:muzyka-gracz Work:muzyka
+EndIf
+Delete >NIL: Work:amiga.cfg
+If EXISTS Work:amiga.cfg-gracz
+  Copy Work:amiga.cfg-gracz Work:amiga.cfg
+  Delete >NIL: Work:amiga.cfg-gracz
+EndIf
+Echo >Work:mom.done "rc=$PRC"

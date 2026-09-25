@@ -96,6 +96,33 @@ typedef struct
 
 typedef struct { uint8_t program, glosnosc, ekspresja, pedal; uint16_t bend; } kanal_t;
 
+/* ---- AdLib (0.3.0): OPL2 w uproszczeniu, barwy z FAT.AD gracza ---------
+   Opisane publicznie: rejestry OPL2 (karta katalogowa Yamahy YM3812,
+   AdLib Programming Guide) i format Global Timbre Library AIL 2.0 (zrodla
+   AIL 2.0 wydane przez Johna Milesa jako public domain): naglowek
+   {patch, bank, offset32} do bank=0xFF, barwa = dlugosc16 (14), transpozycja,
+   potem 11 bajtow rejestrow: mod 20h 40h 60h 80h E0h, C0h, car 20h 40h 60h 80h E0h.
+   Emulator NASZ i prosty (nie bit w bit): 2 operatory, 4 fale OPL2, obwiednia
+   ADSR w krokach 0,1875 dB, feedback, polaczenie FM/addytywne. Bez KSL,
+   wibrato i tremolo. */
+#define ADL_GLOSOW 9
+typedef struct
+{
+    uint32_t faza, krok;
+    int32_t env;               /* tlumienie w jednostkach 0,1875 dB, Q8; 511<<8 = cisza */
+    uint8_t etap;              /* 0 cisza, 1 atak, 2 zanik, 3 podtrzymanie, 4 wybrzmienie */
+    uint8_t ciagly, fala, mnoz2;
+    int32_t a_inc, d_inc, r_inc, sl, tl;
+    int16_t amp;
+} adl_op_t;
+typedef struct
+{
+    uint8_t zajety, kanal, nuta, trzymany, fb, polacz;
+    uint32_t wiek, baza_krok;
+    int32_t m1, m2, glosn_att;
+    adl_op_t op[2];
+} adl_glos_t;
+
 typedef struct { const uint8_t * p; const uint8_t * kon; uint32_t tik; uint8_t status; uint8_t koniec; } sciezka_t;
 
 typedef struct { uint8_t lbx; uint32_t off, dl; } utwor_t;
@@ -127,7 +154,25 @@ struct konw
     int zapisane_bloki;
     int ima_indeks;
     int nr;                    /* numer biezacego utworu dla statusu */
+
+    /* AdLib */
+    int tryb;                  /* 0 prosty syntezator, 1 AdLib */
+    uint8_t barwy[2][128][12]; /* [0] bank 55 (melodia), [1] bank 127 (perkusja) */
+    uint8_t jest[2][128];
+    uint8_t timb[128][2];      /* TIMB biezacego utworu: patch, bank */
+    int ile_timb;
+    uint8_t bank_kan[16];      /* CC 114 (XMIDI: wybor banku), 0 = z TIMB */
+    int16_t fale_opl[4][256];
+    adl_glos_t ag[ADL_GLOSOW];
+    uint32_t wiek;
 };
+
+static void adl_nuta_on(konw_t * k, int ch, int nuta, int vel);
+static void adl_nuta_off(konw_t * k, int ch, int nuta);
+static void adl_kroki(konw_t * k, adl_glos_t * g);
+static int adl_renderuj(konw_t * k, int32_t * mix, int n);
+static void adl_fale(konw_t * k);
+static int adl_wczytaj_fat(konw_t * k);
 
 /* ------------------------------------------------------------------------ */
 
@@ -204,7 +249,7 @@ static void sciezka_lbx(konw_t * k, int nr, char * dst, int cap)
     snprintf(dst, (size_t)cap, "%s", LBXY[nr]);
 }
 
-konw_t * Konw_Start(const char * katalog, long rate, int max_utworow, char * blad, int cap)
+konw_t * Konw_Start(const char * katalog, long rate, int synth, int max_utworow, char * blad, int cap)
 {
     konw_t * k = (konw_t *)calloc(1, sizeof(konw_t));
     int l, i;
@@ -213,6 +258,15 @@ konw_t * Konw_Start(const char * katalog, long rate, int max_utworow, char * bla
     k->rate = rate;
     k->szum = 0x12345678UL;
     zrob_fale(k);
+    k->tryb = synth ? 1 : 0;
+    if (k->tryb) {
+        adl_fale(k);
+        if (!adl_wczytaj_fat(k)) {
+            snprintf(blad, (size_t)cap, "AdLib needs FAT.AD - copy it from the game's folder.");
+            free(k);
+            return NULL;
+        }
+    }
 
     for (l = 0; l < ILE_LBX; l++) {
         char nazwa[64];
@@ -332,6 +386,7 @@ static glos_t * wolny_glos(konw_t * k)
 
 static void nuta_on(konw_t * k, int ch, int nuta, int vel)
 {
+    if (k->tryb) { adl_nuta_on(k, ch, nuta, vel); return; }
     glos_t * g = wolny_glos(k);
     kanal_t * c = &k->kan[ch];
     memset(g, 0, sizeof *g);
@@ -378,6 +433,7 @@ static void nuta_on(konw_t * k, int ch, int nuta, int vel)
 static void nuta_off(konw_t * k, int ch, int nuta)
 {
     int i;
+    if (k->tryb) { adl_nuta_off(k, ch, nuta); return; }
     for (i = 0; i < MAXV; i++) {
         glos_t * g = &k->g[i];
         if (g->stan && g->stan != 3 && g->kanal == ch && g->nuta == nuta) {
@@ -430,11 +486,15 @@ static void zdarzenie(konw_t * k, sciezka_t * s)
                     int i;
                     for (i = 0; i < MAXV; i++)
                         if (k->g[i].stan && k->g[i].kanal == ch && k->g[i].trzymany) k->g[i].stan = 3;
+                    for (i = 0; i < ADL_GLOSOW; i++)
+                        if (k->ag[i].zajety && k->ag[i].kanal == ch && k->ag[i].trzymany) k->ag[i].op[0].etap = k->ag[i].op[1].etap = 4;
                 }
-            } else if (a == 121) { glos_wyzeruj_kanal(k, ch); }
+            } else if (a == 114) { k->bank_kan[ch] = (uint8_t)b; }   /* XMIDI: wybor banku barw */
+            else if (a == 121) { glos_wyzeruj_kanal(k, ch); }
             else if (a == 123 || a == 120) {
                 int i;
                 for (i = 0; i < MAXV; i++) if (k->g[i].stan && k->g[i].kanal == ch) k->g[i].stan = 3;
+                for (i = 0; i < ADL_GLOSOW; i++) if (k->ag[i].zajety && k->ag[i].kanal == ch) k->ag[i].op[0].etap = k->ag[i].op[1].etap = 4;
             }
             break;
         case 0xE0: {
@@ -445,6 +505,7 @@ static void zdarzenie(konw_t * k, sciezka_t * s)
                 if (g->stan && g->kanal == ch && !g->szum)
                     g->krok = (uint32_t)(((uint64_t)g->baza_krok * BEND[k->kan[ch].bend >> 9]) >> 16);
             }
+            for (i = 0; i < ADL_GLOSOW; i++) if (k->ag[i].zajety && k->ag[i].kanal == ch) adl_kroki(k, &k->ag[i]);
             break; }
         default: break;
         }
@@ -491,6 +552,8 @@ static int renderuj(konw_t * k, int16_t * wy, int n)
     int32_t mix[CTRL];
     int i, v, aktywne = 0;
     memset(mix, 0, sizeof(int32_t) * (size_t)n);
+    if (k->tryb) aktywne = adl_renderuj(k, mix, n);
+    else
     for (v = 0; v < MAXV; v++) {
         glos_t * g = &k->g[v];
         int32_t a;
@@ -522,6 +585,200 @@ static int renderuj(konw_t * k, int16_t * wy, int n)
         wy[i] = (int16_t)s;
     }
     return aktywne;
+}
+
+/* ------------------------------------------------------------------------ */
+/*  AdLib (OPL2)                                                             */
+/* ------------------------------------------------------------------------ */
+
+/* 32767 * 2^(-k/32): tlumienie a (0,1875 dB) -> amplituda = ADL_AMP[a&31] >> (a>>5) */
+static const int16_t ADL_AMP[32] = { 32767, 32065, 31378, 30705, 30047, 29404, 28774, 28157,
+    27554, 26963, 26385, 25820, 25267, 24725, 24196, 23677, 23170, 22673, 22187, 21712, 21247,
+    20791, 20346, 19910, 19483, 19066, 18657, 18258, 17866, 17483, 17109, 16742 };
+/* mnoznik czestotliwosci operatora (MULT) razy 2 */
+static const uint8_t ADL_MNOZ2[16] = { 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 20, 24, 24, 30, 30 };
+
+static int16_t adl_amp(int32_t att)
+{
+    if (att >= 511) return 0;
+    if (att < 0) att = 0;
+    return (int16_t)(ADL_AMP[att & 31] >> (att >> 5));
+}
+
+/* tlumienie dla glosnosci 0..127 (32 jednostki = 6 dB = polowa) */
+static int32_t adl_att_glosn(int v)
+{
+    int32_t att = 0;
+    if (v <= 0) return 511;
+    while (v < 64) { v <<= 1; att += 32; }
+    return att + ((127 - v) * 32) / 127;
+}
+
+static void adl_fale(konw_t * k)
+{
+    int i;
+    for (i = 0; i < 256; i++) {
+        int s = sin256(i);
+        k->fale_opl[0][i] = (int16_t)s;
+        k->fale_opl[1][i] = (int16_t)(i < 128 ? s : 0);
+        k->fale_opl[2][i] = (int16_t)(s < 0 ? -s : s);
+        k->fale_opl[3][i] = (int16_t)((i & 64) ? 0 : (s < 0 ? -s : s));
+    }
+}
+
+/* FAT.AD z katalogu gry: 0 = brak */
+static int adl_wczytaj_fat(konw_t * k)
+{
+    FILE * f = fopen("FAT.AD", "rb");
+    uint8_t * d;
+    long n;
+    int i, ile = 0;
+    if (f == NULL) return 0;
+    fseek(f, 0, SEEK_END); n = ftell(f); fseek(f, 0, SEEK_SET);
+    d = (uint8_t *)malloc((size_t)n);
+    if (d == NULL || n < 8 || fread(d, 1, (size_t)n, f) != (size_t)n) { fclose(f); free(d); return 0; }
+    fclose(f);
+    for (i = 0; (i + 1) * 6 <= n; i++) {
+        uint8_t patch = d[i * 6], bank = d[i * 6 + 1];
+        uint32_t o = le32(d + i * 6 + 2);
+        int b = (bank == 55) ? 0 : (bank == 127) ? 1 : -1;
+        if (bank == 0xFF) break;
+        if (b < 0 || patch > 127 || o + 14 > (uint32_t)n) continue;
+        memcpy(k->barwy[b][patch], d + o + 2, 12);
+        k->jest[b][patch] = 1;
+        ile++;
+    }
+    free(d);
+    return ile > 0;
+}
+
+/* czas pelnego zaniku (96 dB) dla tempa R 1..15 w ms: 39280 >> (R-1);
+   atak od ciszy: 2826 >> (R-1), R=15 natychmiast */
+static int32_t adl_przyrost(konw_t * k, int r, int atak)
+{
+    int32_t ms;
+    if (r <= 0) return 0;
+    if (atak && r >= 15) return 511 << 8;
+    ms = (atak ? 2826 : 39280) >> (r - 1);
+    if (ms < 1) ms = 1;
+    return (int32_t)(((int64_t)(512 << 8) * CTRL * 1000) / ((int64_t)ms * k->rate));
+}
+
+static void adl_op_ustaw(konw_t * k, adl_op_t * op, const uint8_t * r)  /* r: 20h 40h 60h 80h E0h */
+{
+    memset(op, 0, sizeof *op);
+    op->mnoz2 = ADL_MNOZ2[r[0] & 15];
+    op->ciagly = (r[0] & 0x20) ? 1 : 0;
+    op->tl = (r[1] & 63) * 4;
+    op->a_inc = adl_przyrost(k, r[2] >> 4, 1);
+    op->d_inc = adl_przyrost(k, r[2] & 15, 0);
+    op->sl = ((r[3] >> 4) == 15) ? 511 : (r[3] >> 4) * 16;
+    op->r_inc = adl_przyrost(k, r[3] & 15, 0);
+    op->fala = r[4] & 3;
+    op->env = 511 << 8;
+    op->etap = 1;
+}
+
+static void adl_kroki(konw_t * k, adl_glos_t * g)
+{
+    uint32_t b = (uint32_t)(((uint64_t)g->baza_krok * BEND[k->kan[g->kanal].bend >> 9]) >> 16);
+    g->op[0].krok = (b >> 1) * g->op[0].mnoz2;
+    g->op[1].krok = (b >> 1) * g->op[1].mnoz2;
+}
+
+static void adl_nuta_on(konw_t * k, int ch, int nuta, int vel)
+{
+    kanal_t * c = &k->kan[ch];
+    const uint8_t * t = NULL;
+    adl_glos_t * g = NULL;
+    int i, graj = nuta;
+    if (ch == 9) {
+        if (nuta < 128 && k->jest[1][nuta]) t = k->barwy[1][nuta];
+        if (t != NULL && t[0] != 0) graj = t[0];       /* perkusja: stala wysokosc z barwy */
+    } else {
+        int bank = k->bank_kan[ch];
+        if (bank == 0) {
+            bank = 55;
+            for (i = 0; i < k->ile_timb; i++) if (k->timb[i][0] == c->program) { bank = k->timb[i][1]; break; }
+        }
+        if (bank == 55 && k->jest[0][c->program]) t = k->barwy[0][c->program];
+        else if (bank == 127 && k->jest[1][c->program]) t = k->barwy[1][c->program];
+        else if (k->jest[0][c->program]) t = k->barwy[0][c->program];
+        if (t != NULL) graj = nuta + (int8_t)t[0];
+    }
+    if (t == NULL) return;                               /* brak barwy - AIL tez milczy */
+    for (i = 0; i < ADL_GLOSOW; i++) if (!k->ag[i].zajety) { g = &k->ag[i]; break; }
+    if (g == NULL) {                                     /* kradziez najstarszego */
+        g = &k->ag[0];
+        for (i = 1; i < ADL_GLOSOW; i++) if (k->ag[i].wiek < g->wiek) g = &k->ag[i];
+    }
+    memset(g, 0, sizeof *g);
+    g->zajety = 1; g->kanal = (uint8_t)ch; g->nuta = (uint8_t)nuta; g->wiek = ++k->wiek;
+    adl_op_ustaw(k, &g->op[0], t + 1);
+    adl_op_ustaw(k, &g->op[1], t + 7);
+    g->fb = (t[6] >> 1) & 7;
+    g->polacz = t[6] & 1;
+    g->glosn_att = adl_att_glosn((int)(((uint32_t)vel * c->glosnosc * c->ekspresja) / (127u * 127u)));
+    g->baza_krok = krok_nuty(k, graj);
+    adl_kroki(k, g);
+}
+
+static void adl_nuta_off(konw_t * k, int ch, int nuta)
+{
+    int i, o;
+    for (i = 0; i < ADL_GLOSOW; i++) {
+        adl_glos_t * g = &k->ag[i];
+        if (!g->zajety || g->kanal != ch || g->nuta != nuta || g->op[1].etap == 4) continue;
+        if (k->kan[ch].pedal) { g->trzymany = 1; continue; }
+        for (o = 0; o < 2; o++) g->op[o].etap = 4;
+    }
+}
+
+static void adl_obwiednia(adl_op_t * op)
+{
+    switch (op->etap) {
+    case 1: op->env -= op->a_inc; if (op->env <= 0) { op->env = 0; op->etap = 2; } break;
+    case 2: op->env += op->d_inc;
+            if (op->env >= (op->sl << 8)) { op->env = op->sl << 8; op->etap = op->ciagly ? 3 : 4; }
+            break;
+    case 4: op->env += op->r_inc; if (op->env >= (511 << 8)) { op->env = 511 << 8; op->etap = 0; } break;
+    default: break;
+    }
+}
+
+static int adl_renderuj(konw_t * k, int32_t * mix, int n)
+{
+    int v, i, akt = 0;
+    for (v = 0; v < ADL_GLOSOW; v++) {
+        adl_glos_t * g = &k->ag[v];
+        const int16_t * f0, * f1;
+        uint32_t p0, p1, s0, s1;
+        int32_t a0, a1, m1, m2;
+        int fbs;
+        if (!g->zajety) continue;
+        adl_obwiednia(&g->op[0]);
+        adl_obwiednia(&g->op[1]);
+        if (g->op[1].etap == 0 && (g->polacz == 0 || g->op[0].etap == 0)) { g->zajety = 0; continue; }
+        akt++;
+        a0 = adl_amp((g->op[0].env >> 8) + g->op[0].tl + (g->polacz ? g->glosn_att : 0));
+        a1 = adl_amp((g->op[1].env >> 8) + g->op[1].tl + g->glosn_att);
+        f0 = k->fale_opl[g->op[0].fala]; f1 = k->fale_opl[g->op[1].fala];
+        p0 = g->op[0].faza; p1 = g->op[1].faza; s0 = g->op[0].krok; s1 = g->op[1].krok;
+        m1 = g->m1; m2 = g->m2;
+        fbs = g->fb ? 14 - g->fb : 0;
+        for (i = 0; i < n; i++) {
+            int32_t mo, co;
+            int fo = g->fb ? ((m1 + m2) >> fbs) : 0;
+            mo = ((int32_t)f0[((p0 >> 24) + fo) & 255] * a0) >> 15;
+            m2 = m1; m1 = mo;
+            if (g->polacz) co = mo + (((int32_t)f1[p1 >> 24] * a1) >> 15);
+            else co = ((int32_t)f1[((p1 >> 24) + (mo >> 5)) & 255] * a1) >> 15;
+            mix[i] += co;
+            p0 += s0; p1 += s1;
+        }
+        g->op[0].faza = p0; g->op[1].faza = p1; g->m1 = m1; g->m2 = m2;
+    }
+    return akt;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -617,6 +874,18 @@ static int nastepny(konw_t * k)
         }
         fclose(f);
         h = fnv1a(we, u->dl);
+        /* TIMB: patch -> bank dla AdLib (jak konwerter XMIDI ReMoM) */
+        k->ile_timb = 0;
+        for (i = 0; i + 10 <= (int)u->dl; i++) {
+            if (memcmp(we + i, "TIMB", 4) == 0) {
+                int ile = we[i + 8] | (we[i + 9] << 8), j;
+                for (j = 0; j < ile && j < 128 && i + 12 + 2 * j <= (int)u->dl; j++) {
+                    k->timb[j][0] = we[i + 10 + 2 * j]; k->timb[j][1] = we[i + 11 + 2 * j];
+                }
+                k->ile_timb = j;
+                break;
+            }
+        }
         for (i = 0; i < k->ile_fnv; i++) if (k->fnv_zrobione[i] == h) dup = 1;
         if (dup || !fmt_mus_convert_xmid(we, u->dl, &midi, &midi_dl, &petla)) { free(we); free(midi); continue; }
         free(we);
@@ -642,6 +911,8 @@ static int nastepny(konw_t * k)
         fwrite(nag, 1, NAGLOWEK, k->wy);
         for (i = 0; i < 16; i++) glos_wyzeruj_kanal(k, i);
         memset(k->g, 0, sizeof k->g);
+        memset(k->ag, 0, sizeof k->ag);
+        memset(k->bank_kan, 0, sizeof k->bank_kan);
         k->teraz = 0;
         k->ogon = 0;
         k->zapisane_bloki = 0;

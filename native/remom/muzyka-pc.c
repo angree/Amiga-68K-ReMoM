@@ -28,21 +28,25 @@ int main(int argc, char ** argv)
     char s[160];
     konw_t * k;
     long rate = 11025;
+    int synth = 0;
     int r, ostatni = -1, i;
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "22") == 0) rate = 22050;
         else if (strcmp(argv[i], "11") == 0) rate = 11025;
+        else if (strcmp(argv[i], "adlib") == 0) synth = 1;
         else if (chdir_(argv[i]) != 0) {
             printf("remom-music: cannot open folder %s\n", argv[i]);
             return 1;
         }
     }
     printf("Master of Magic music converter for the Amiga port\n"
-           "Usage: remom-music [11|22] [folder with MUSIC.LBX]\n\n");
+           "Usage: remom-music [11|22] [adlib] [folder with MUSIC.LBX]\n"
+           "  adlib = AdLib sound with the game's own FM instruments (needs FAT.AD)\n\n");
     mkdir_("muzyka");
-    k = Konw_Start("muzyka", rate, 0, s, (int)sizeof s);
+    k = Konw_Start("muzyka", rate, synth, 0, s, (int)sizeof s);
     if (k == NULL) { printf("%s\n", s); return 1; }
-    printf("Converting %d tracks at %ld Hz into the muzyka folder...\n", Konw_Ile(k), rate);
+    printf("Converting %d tracks at %ld Hz (%s) into the muzyka folder...\n", Konw_Ile(k), rate,
+           synth ? "AdLib" : "simple synth");
     while ((r = Konw_Krok(k, s, (int)sizeof s)) > 0) {
         if (Konw_Zrobione(k) != ostatni) { ostatni = Konw_Zrobione(k); printf("\r%s   ", s); fflush(stdout); }
     }

@@ -27,10 +27,12 @@
 #include "amiga_PFL.h"
 #include "amiga_audio.h"
 #include "amiga_adpcm.h"
+#include "amiga_camd.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define AMIGA_SND_HDR      16          /* naglowek wpisu dzwiekowego MoX */
 #define AMIGA_VOC_HDR      26          /* "Creative Voice File" */
@@ -77,11 +79,71 @@ static void Amiga_Muzyka_Stop(void)
     amiga_muzyka_fnv = 0;
 }
 
+/* ---- MIDI przez camd.library (music=2, 0.3.0) --------------------------
+   XMIDI z LBX -> MIDI konwerterem ReMoM (fmt_mus_convert_xmid, wyciety przez
+   build/xmi2mid-gen.py) -> plik w T: -> odtwarzacz z portu OpenTTD
+   (native/amiga_camd.c, osobny proces na timer.device). Syntezator jest
+   ZEWNETRZNY (moduł MIDI na porcie szeregowym / sterownik CAMD), wiec CPU
+   Amigi nie syntetyzuje niczego. Brak camd i portu -> muzyka z plikow. */
+#define AMIGA_MIDI_PLIK "T:remom-muzyka.mid"
+extern bool fmt_mus_convert_xmid(const uint8_t *data_in, uint32_t len_in, uint8_t **data_out_ptr, uint32_t *len_out_ptr, bool *tune_loops);
+static int amiga_midi_stan = 0;          /* 0 nie probowano, 1 dziala, -1 brak */
+static unsigned long amiga_midi_fnv = 0;
+static int amiga_midi_petla = 0;
+
+static void Amiga_Midi_Serwis(void)
+{
+    if(amiga_midi_fnv != 0 && !AmigaMidi_IsPlaying())
+    {
+        if(amiga_midi_petla) { AmigaMidi_Play(AMIGA_MIDI_PLIK); }
+        else { amiga_midi_fnv = 0; }
+    }
+}
+
+/* 1 = obsluzone przez MIDI, 0 = MIDI niedostepne (gra bierze pliki) */
+static int Amiga_Audio_Midi(const uint8_t * p, uint32_t rozmiar, unsigned long h)
+{
+    uint8_t * mid = NULL;
+    uint32_t dl = 0;
+    bool petla = false;
+    FILE * f;
+    if(amiga_midi_stan == 0)
+    {
+        amiga_midi_stan = AmigaMidi_Start() ? 1 : -1;
+        printf("[amiga] muzyka MIDI (camd): %s\n", amiga_midi_stan > 0 ? "dziala" : AmigaMidi_LastError());
+        fflush(stdout);
+        if(amiga_midi_stan > 0) { atexit(AmigaMidi_Shutdown); }
+    }
+    if(amiga_midi_stan < 0) { return 0; }
+    if(h == amiga_midi_fnv) { return 1; }
+    if(!fmt_mus_convert_xmid(p, rozmiar, &mid, &dl, &petla)) { return 1; }
+    AmigaMidi_Stop();
+    f = fopen(AMIGA_MIDI_PLIK, "wb");
+    if(f != NULL)
+    {
+        fwrite(mid, 1, dl, f);
+        fclose(f);
+        if(AmigaMidi_Play(AMIGA_MIDI_PLIK))
+        {
+            amiga_midi_fnv = h;
+            amiga_midi_petla = petla ? 1 : 0;
+            amiga_pompa_muzyki = Amiga_Audio_Service;
+        }
+    }
+    free(mid);
+    LOG_INFO(LOG_CAT_PFL, "[amiga] muzyka MIDI: %08lx, %lu B, petla %d", h, (unsigned long)dl, (int)petla);
+    return 1;
+}
+
 /* raz na klatke (amiga_PFL.c) - dolewa bufory muzyki */
 static unsigned long amiga_audio_serwis_licznik = 0;
 
 void Amiga_Audio_Service(void)
 {
+    if(amiga_midi_stan > 0)
+    {
+        Amiga_Midi_Serwis();
+    }
     if(amiga_muzyka != NULL)
     {
         amiga_audio_serwis_licznik++;
@@ -273,6 +335,10 @@ static int16_t Amiga_Audio_Muzyka(const uint8_t * p, uint32_t rozmiar)
     for(i = 0; i < rozmiar; i++)
     {
         h = ((h ^ p[i]) * 16777619UL) & 0xFFFFFFFFUL;
+    }
+    if(amiga_opt_muzyka == 2 && Amiga_Audio_Midi(p, rozmiar, h))
+    {
+        return -1;                  /* MIDI przez camd.library */
     }
     if(amiga_muzyka != NULL && h == amiga_muzyka_fnv)
     {
