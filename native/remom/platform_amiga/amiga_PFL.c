@@ -70,7 +70,7 @@
 #define AMIGA_CURSOR_DIM   16      /* MOM_DEF.h CURSOR_WIDTH / CURSOR_HEIGHT */
 #define AMIGA_WARP_GUARD_MS 100    /* jak Platform_Set_Warp_Guard() w SDL2 */
 
-#define AMIGA_TYTUL "Master of Magic 0.4.0"   /* pasek ekranu i okno; wersja portu (developer 2026-09-24) */
+#define AMIGA_TYTUL "Master of Magic 0.4.1"   /* pasek ekranu i okno; wersja portu (developer 2026-09-24) */
 
 #define AMIGA_GFX_DEFAULT  (-2)
 #define AMIGA_GFX_NONE     (-1)
@@ -381,7 +381,9 @@ void Startup_Platform(void)
     /* tytul PRZED otwarciem - okno na Workbenchu (gfx=3) dostaje go przy
        otwarciu; wczesniej pokazywalo domyslny tytul warstwy z OpenXcoma */
     amigagfx_set_screen_title(AMIGA_TYTUL);
-    rc = amigagfx_open(PLATFORM_SCREEN_WIDTH, PLATFORM_SCREEN_HEIGHT, amiga_opt_pasek, backend);
+    /* NTSC: 200 widocznych linii - ekran z paskiem (211) ucinal dol (gracz
+       0.4.0). Na NTSC gra dostaje caly ekran bez paska. */
+    rc = amigagfx_open(PLATFORM_SCREEN_WIDTH, PLATFORM_SCREEN_HEIGHT, (amiga_opt_pasek && !amigagfx_is_ntsc()), backend);
     if(rc != 0)
     {
         char message[160];
@@ -430,7 +432,7 @@ void Amiga_PFL_Przeotworz_Ekran(void)
     amiga_pfl_display_open = 0;
     amigagfx_close();
     amigagfx_set_video_mode(amiga_opt_wideo);
-    rc = amigagfx_open(PLATFORM_SCREEN_WIDTH, PLATFORM_SCREEN_HEIGHT, amiga_opt_pasek, amiga_pfl_backend);
+    rc = amigagfx_open(PLATFORM_SCREEN_WIDTH, PLATFORM_SCREEN_HEIGHT, (amiga_opt_pasek && !amigagfx_is_ntsc()), amiga_pfl_backend);
     if(rc != 0)
     {
         char message[160];

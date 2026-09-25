@@ -1,0 +1,91 @@
+# autoinput-tury.txt - wczytanie SAVE1 i 10x Next Turn z bitwami na AUTO (gracz 0.4.0: wyjscie do AmigaOS po turze)
+wait 4000
+click 160 143
+wait 3000
+click 123 52
+wait 1500
+click 100 177
+wait 9000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+click 280 185
+wait 15000
+click 172 179
+wait 30000
+key 13
+wait 3000
+click 160 100
+wait 2000
+snap t-koniec
+wait 1000
+quit

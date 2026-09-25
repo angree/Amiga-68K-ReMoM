@@ -52,7 +52,7 @@
 #include "muzyka_konw.h"
 
 static const char verstag[] __attribute__((used)) =
-    "$VER: remom-prefs 0.4.0 (25.09.2026)";
+    "$VER: remom-prefs 0.4.1 (25.09.2026)";
 
 #define PLIK "PROGDIR:amiga.cfg"
 
@@ -776,8 +776,10 @@ int main(int argc, char **argv)
             printf("remom-prefs: COULD NOT WRITE " PLIK "\n");
             return 20;
         }
-        pokaz();
-        printf("saved to " PLIK "\n");
+        if (argc > 0) {   /* z ikony (argc == 0) bez tekstu - inaczej libnix otwiera okno CLI (gracz 0.4.0) */
+            pokaz();
+            printf("saved to " PLIK "\n");
+        }
     }
     if (test_ms > 0) {
         printf("remom-prefs: okno zamkniete (wynik %d)\n", r);

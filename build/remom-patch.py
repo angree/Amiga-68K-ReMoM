@@ -928,6 +928,15 @@ def latki_menu_amigi():
         zamien("MoM/src/LOADER.c", "\n    " + f,
                "\n    { static int amiga_raz = 0; if(!amiga_raz) { amiga_raz = 1; " + f + " } }  /* AMIGA: raz, bez wycieku puli */", ile=1)
 
+
+    # 0.4.1 (gracz: migajacy punkt w lewym gornym rogu minimapy): petla
+    # wypelniania w Create_Blank_Picture pisala piksele 1..length zamiast
+    # 0..length-1 - piksel (0,0) zostawal 0 = przezroczysty, przeswitywalo
+    # przez niego tlo (migalo), a jeden bajt wychodzil za obrazek. Blad ReMoM.
+    zamien("MoX/src/FLIC_Draw.c",
+           "        *(pict_seg + SZ_FLIC_HDR + itr_length) = color;",
+           "        *(pict_seg + SZ_FLIC_HDR + itr_length - 1) = color;  /* AMIGA: bylo bez -1 */", ile=1)
+
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
            "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",

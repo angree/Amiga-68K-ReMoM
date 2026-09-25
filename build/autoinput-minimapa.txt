@@ -1,0 +1,15 @@
+# autoinput-minimapa.txt - wczytanie SAVE1, 3 zrzuty minimapy (miganie znacznika)
+wait 4000
+click 160 143
+wait 3000
+click 123 52
+wait 1500
+click 100 177
+wait 9000
+snap m1
+wait 250
+snap m2
+wait 250
+snap m3
+wait 1000
+quit
