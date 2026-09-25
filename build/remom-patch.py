@@ -455,6 +455,12 @@ def latki_surowe_dane():
     zamien("MoM/src/MainScr_Maps.c", "GET_2B_OFS(_world_maps, ", "AMIGA_WM_GET(", ile=2)
     zamien("MoM/src/MainScr_Maps.c", "GET_2B_OFS(_world_maps,world_maps_offset)",
            "AMIGA_WM_GET(world_maps_offset)", ile=1)
+    # 0.3.1 (gracz: "smieci na minimapie"): minimapa czytala teren przez
+    # world_data_ptr makrem LE - mapa swiata lezy w pamieci natywnie (BE),
+    # wiec indeks terenu mial zamienione bajty i kolory byly losowe.
+    zamien("MoM/src/MainScr_Maps.c",
+           "terrain_type_idx = GET_2B_OFS(world_data_ptr, ((minimap_square_y * 120) + (minimap_square_x * 2)));",
+           "terrain_type_idx = (int16_t)((int16_t *)world_data_ptr)[((minimap_square_y * 120) + (minimap_square_x * 2)) / 2];  /* AMIGA: natywnie */", ile=1)
 
 
 def znaczniki_w_funkcji(rel, sygnatura, prefiks, minimum=3, pamiec=None):
@@ -891,6 +897,63 @@ def latki_menu_amigi():
            "\n    /* AMIGA: \"Quit To AmigaOS\" zamiast bitmapy \"Quit To DOS\" */\n"
            "    Amiga_Rysuj_Napis_Menu(\"Quit To AmigaOS\", menu_x_start, (menu_y_start + 60),\n"
            "                           (scanned_field == _quit_button) ? 1 : 0);", ile=1)
+
+    # 0.3.1 (gracz: "nie dziala load"): lista istniejacych zapisow trzymala
+    # numer PLIKU (1..8), a porownywano go z numerem WIERSZA (0..7) i tak samo
+    # rysowano podswietlenie. Pierwszego wiersza nie dalo sie wybrac, wybranie
+    # N-tego wczytywalo SAVE(N+1). Blad rekonstrukcji ReMoM (Load_SAVE_GAM bierze
+    # indeks od 0 i sam dodaje 1) - poprawiony u nas.
+    zamien("MoM/src/LoadScr.c",
+           "            save_game_slots__ovr160[save_game_count__ovr160] = itr;",
+           "            save_game_slots__ovr160[save_game_count__ovr160] = (itr - 1);  /* AMIGA: indeks wiersza od 0 */", ile=1)
+
+    # 0.3.1 diagnoza (gracz: "wywalilo po kilku razach opcji"): brak pamieci
+    # puli gry - kto alokowal? numer, bloki i adres wywolujacego na stdout.
+    zamien("MoX/src/Allocate.c",
+           "    if(Check_Release_Version() == ST_TRUE)\n    {\n        stu_strcpy(buffer, \"Insufficient memory. You need at least \");",
+           "    printf(\"[amiga] Allocation_Error: blad %u, blokow %u, wywolal %p\\n\", (unsigned)error_num, (unsigned)blocks, __builtin_return_address(0));  /* AMIGA */\n"
+           "    fflush(stdout);\n"
+           "    if(Check_Release_Version() == ST_TRUE)\n    {\n        stu_strcpy(buffer, \"Insufficient memory. You need at least \");", ile=1)
+
+    # 0.3.1 (gracz: "wywalilo przy daniu kilku razy opcji w czasie gry"):
+    # MOM_SCR.c wola Load_WZD_Resources() (/* HACK */) przy KAZDYM wejsciu
+    # w ekran Load/Save, a ta laduje grafike terenu i mapy od nowa do puli,
+    # ktora niczego nie zwalnia: +830 KB na wejscie, po 6 wejsciach
+    # "Insufficient memory" (pula 6 MiB; na PC 16 MiB - pozniej, ale tak samo).
+    # Grafika i dzwieki sa stale - raz wystarczy. SPELLDAT/BUILDDAT i upkeep
+    # dalej przy kazdym wczytaniu (jak w oryginale, ktory wczytywal gre od
+    # nowego procesu WIZARDS.EXE).
+    for f in ("Terrain_Init();", "Main_Screen_Load_Pictures();",
+              "Load_Combat_Background_Bottom();", "Load_Button_Sounds();"):
+        zamien("MoM/src/LOADER.c", "\n    " + f,
+               "\n    { static int amiga_raz = 0; if(!amiga_raz) { amiga_raz = 1; " + f + " } }  /* AMIGA: raz, bez wycieku puli */", ile=1)
+
+    # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
+    zamien("MoM/src/MOM_SCR.c",
+           "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",
+           "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());\n"
+           "                { extern uint32_t Pool_Bytes_Used(void); printf(\"[amiga] pula: %lu B zajete\\n\", (unsigned long)Pool_Bytes_Used()); }  /* AMIGA */", ile=1)
+
+    # 0.3.1 (gracz: w ekranie Build opis budynku ma puste "Allows"):
+    # Building_Allows_List__WIP w ReMoM jest niedokonczony - warunek "i"
+    # zamiast "lub" (lista prawie zawsze pusta), jednostki jako TODO.
+    # Dokonczone u nas: budynki wymagajace tego budynku + jednostki rasy
+    # miasta (albo ogolne), ktore go wymagaja; tablica wywolujacego ma 9 miejsc.
+    rel = "MoM/src/ProdScr.c"
+    zamien(rel,
+           "            (bldg_data_table[itr].reqd_bldg_1 == bldg_idx)\n            &&\n            (bldg_data_table[itr].reqd_bldg_2 == bldg_idx)",
+           "            (*allows_list_count < 9)  /* AMIGA */\n            &&\n            (\n            (bldg_data_table[itr].reqd_bldg_1 == bldg_idx)\n            ||  /* AMIGA: bylo && */\n            (bldg_data_table[itr].reqd_bldg_2 == bldg_idx)\n            )", ile=1)
+    zamien(rel,
+           "    for(itr = 35; itr < 198; itr++)\n    {\n        // TODO  add allows units\n    }",
+           "    for(itr = 35; itr < 198; itr++)  /* AMIGA: dokonczone (bylo TODO) */\n    {\n"
+           "        if(*allows_list_count >= 9) { break; }\n"
+           "        if(((_unit_type_table[itr].race_type == city_race) || (_unit_type_table[itr].race_type == 14 /* Race_Generic */))\n"
+           "           && ((_unit_type_table[itr].reqd_bldg_1 == bldg_idx) || (_unit_type_table[itr].reqd_bldg_2 == bldg_idx)))\n"
+           "        {\n"
+           "            allows_list[*allows_list_count] = (int16_t)(itr + 100);\n"
+           "            *allows_list_count += 1;\n"
+           "        }\n"
+           "    }", ile=1)
 
     rel = "MoM/src/CREDITS.c"
     zamien(rel, "    Set_Window(0, 40, 319, 137);", "    Set_Window(0, 40, 319, 125);  /* AMIGA: 137 - menu 12 px wyzej */", ile=1)

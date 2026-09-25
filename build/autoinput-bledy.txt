@@ -1,0 +1,78 @@
+# autoinput-bledy.txt - zgloszenia graczy 0.3.0: wczytanie SAVE1, opcje w grze 5x, minimapa, Magic, Info
+wait 4000
+click 160 143
+wait 3000
+click 123 52
+wait 1000
+click 100 177
+wait 7000
+wait 2000
+snap b-mapa
+click 25 8
+wait 3000
+snap b-gra
+click 200 177
+wait 3000
+snap b-ustawienia
+click 285 182
+wait 2500
+click 250 177
+wait 3000
+click 25 8
+wait 3000
+click 200 177
+wait 3000
+click 285 182
+wait 2500
+click 250 177
+wait 3000
+click 25 8
+wait 3000
+click 200 177
+wait 3000
+click 285 182
+wait 2500
+click 250 177
+wait 3000
+click 25 8
+wait 3000
+click 200 177
+wait 3000
+click 285 182
+wait 2500
+click 250 177
+wait 3000
+click 25 8
+wait 3000
+click 200 177
+wait 3000
+click 285 182
+wait 2500
+click 250 177
+wait 3000
+snap b-po-opcjach
+click 204 8
+wait 3500
+snap b-magia
+key 27
+wait 2500
+click 248 8
+wait 2000
+snap b-info
+wait 1000
+key 27
+wait 2500
+click 131 118
+wait 4000
+snap b-miasto
+click 260 193
+wait 4000
+snap b-prod
+click 40 10
+wait 2500
+snap b-allows1
+click 40 24
+wait 2500
+snap b-allows2
+wait 1000
+quit

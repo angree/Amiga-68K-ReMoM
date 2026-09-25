@@ -1,0 +1,75 @@
+# autoinput-opcje-gra.txt - wczytanie SAVE1, 8x Game -> Settings -> OK -> OK
+wait 4000
+click 160 143
+wait 3000
+click 123 52
+wait 1500
+click 100 177
+wait 9000
+click 25 8
+wait 5000
+click 200 177
+wait 5000
+click 285 182
+wait 5000
+click 250 177
+wait 5000
+click 25 8
+wait 5000
+click 200 177
+wait 5000
+click 285 182
+wait 5000
+click 250 177
+wait 5000
+click 25 8
+wait 5000
+click 200 177
+wait 5000
+click 285 182
+wait 5000
+click 250 177
+wait 5000
+click 25 8
+wait 5000
+click 200 177
+wait 5000
+click 285 182
+wait 5000
+click 250 177
+wait 5000
+click 25 8
+wait 5000
+click 200 177
+wait 5000
+click 285 182
+wait 5000
+click 250 177
+wait 5000
+click 25 8
+wait 5000
+click 200 177
+wait 5000
+click 285 182
+wait 5000
+click 250 177
+wait 5000
+click 25 8
+wait 5000
+click 200 177
+wait 5000
+click 285 182
+wait 5000
+click 250 177
+wait 5000
+click 25 8
+wait 5000
+click 200 177
+wait 5000
+click 285 182
+wait 5000
+click 250 177
+wait 5000
+snap o-koniec
+wait 1000
+quit

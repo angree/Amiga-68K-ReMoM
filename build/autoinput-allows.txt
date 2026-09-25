@@ -1,0 +1,25 @@
+# autoinput-allows.txt - wczytanie SAVE1, minimapa, miasto -> Change -> budynek (pole Allows)
+wait 4000
+click 160 143
+wait 3000
+click 123 52
+wait 1500
+click 100 177
+wait 9000
+snap a-mapa
+click 160 8
+wait 4500
+click 100 30
+wait 5000
+snap a-miasto
+click 260 193
+wait 5000
+snap a-prod
+click 40 10
+wait 3000
+snap a-allows1
+click 40 52
+wait 3000
+snap a-allows2
+wait 1000
+quit

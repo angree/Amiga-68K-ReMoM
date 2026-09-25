@@ -165,6 +165,8 @@ struct konw
     int16_t fale_opl[4][256];
     adl_glos_t ag[ADL_GLOSOW];
     uint32_t wiek;
+    uint32_t midi_dl;          /* na zywo: do zapetlenia */
+    int petla;
 };
 
 static void adl_nuta_on(konw_t * k, int ch, int nuta, int vel);
@@ -990,4 +992,90 @@ void Konw_Koniec(konw_t * k)
     if (k == NULL) return;
     zamknij_biezacy(k, 0);
     free(k);
+}
+
+/* ------------------------------------------------------------------------ */
+/*  AdLib NA ZYWO w grze (music=3, 0.3.0)                                    */
+/* ------------------------------------------------------------------------ */
+/* Gracze z 68060 prosili o AdLib liczony w trakcie gry, bez konwersji. Ta sama
+   synteza co w konwerterze, tylko probki ida prosto do bufora Pauli
+   (8 bit ze znakiem), a utwor z petla zaczyna sie od nowa bez przerwy.
+   Koszt: kilkadziesiat procent 68030, kilka procent 68060 - stad opis
+   "needs a fast CPU" w remom-prefs. */
+
+static void timb_czytaj(konw_t * k, const uint8_t * we, uint32_t dl)
+{
+    int i;
+    k->ile_timb = 0;
+    for (i = 0; i + 10 <= (int)dl; i++) {
+        if (memcmp(we + i, "TIMB", 4) == 0) {
+            int ile = we[i + 8] | (we[i + 9] << 8), j;
+            for (j = 0; j < ile && j < 128 && i + 12 + 2 * j <= (int)dl; j++) {
+                k->timb[j][0] = we[i + 10 + 2 * j]; k->timb[j][1] = we[i + 11 + 2 * j];
+            }
+            k->ile_timb = j;
+            return;
+        }
+    }
+}
+
+static void zywo_od_poczatku(konw_t * k)
+{
+    midi_start(k, k->midi, k->midi_dl);
+    k->teraz = 0;
+    k->ogon = 0;
+}
+
+konw_t * Konw_Na_Zywo(long rate, const uint8_t * we, uint32_t dl, char * blad, int cap)
+{
+    konw_t * k = (konw_t *)calloc(1, sizeof(konw_t));
+    uint8_t * midi = NULL;
+    uint32_t mdl = 0;
+    bool petla = false;
+    int i;
+    if (k == NULL) { snprintf(blad, (size_t)cap, "Not enough memory."); return NULL; }
+    k->rate = rate;
+    k->tryb = 1;
+    adl_fale(k);
+    if (!adl_wczytaj_fat(k)) { snprintf(blad, (size_t)cap, "no FAT.AD"); free(k); return NULL; }
+    timb_czytaj(k, we, dl);
+    if (!fmt_mus_convert_xmid(we, dl, &midi, &mdl, &petla)) {
+        snprintf(blad, (size_t)cap, "XMIDI conversion failed"); free(midi); free(k); return NULL;
+    }
+    k->midi = midi;
+    k->midi_dl = mdl;
+    k->petla = petla ? 1 : 0;
+    for (i = 0; i < 16; i++) glos_wyzeruj_kanal(k, i);
+    if (!midi_start(k, midi, mdl)) { snprintf(blad, (size_t)cap, "bad MIDI"); free(midi); free(k); return NULL; }
+    return k;
+}
+
+/* max probek 8 bit do dst; mniej = koniec utworu bez petli */
+int Konw_Graj(konw_t * k, signed char * dst, int max)
+{
+    int16_t tmp[CTRL];
+    int zrobione = 0, i;
+    while (zrobione < max) {
+        int n = max - zrobione, grane = 1, akt, trwa;
+        if (n > CTRL) n = CTRL;
+        while (grane) {
+            sciezka_t * min = NULL;
+            grane = 0;
+            for (i = 0; i < k->ile_sc; i++)
+                if (!k->sc[i].koniec && (min == NULL || k->sc[i].tik < min->tik)) min = &k->sc[i];
+            if (min != NULL && tik_na_probke(k, min->tik) <= k->teraz) { zdarzenie(k, min); grane = 1; }
+        }
+        akt = renderuj(k, tmp, n);
+        for (i = 0; i < n; i++) dst[zrobione + i] = (signed char)(tmp[i] >> 8);
+        zrobione += n;
+        k->teraz += (uint32_t)n;
+        for (trwa = 0, i = 0; i < k->ile_sc; i++) if (!k->sc[i].koniec) trwa = 1;
+        if (!trwa) {
+            if (k->petla) { zywo_od_poczatku(k); continue; }
+            k->ogon += (uint32_t)n;
+            if (k->ogon >= (uint32_t)(k->rate * OGON_SEK) || (akt == 0 && k->ogon > (uint32_t)(k->rate / 4)))
+                break;
+        }
+    }
+    return zrobione;
 }

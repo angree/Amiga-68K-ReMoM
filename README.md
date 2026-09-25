@@ -44,7 +44,7 @@ runs without music. For music, see the next section.
 
 ### Music
 
-`remom-prefs` sets where the music comes from (*Music*: Off, Files or MIDI).
+`remom-prefs` sets where the music comes from (*Music*: Off, Files, MIDI or AdLib live).
 
 **Files.** The PC version synthesises its music from MIDI, which is too heavy
 for a 68020 in the middle of a game. The music is therefore converted once
@@ -74,6 +74,11 @@ The music needs about 32 MB at 11 kHz or 63–67 MB at 22 kHz.
 **Delete music** in `remom-prefs` removes the converted files; it asks
 before it deletes anything.
 
+**AdLib live.** The game computes the AdLib music itself while you play, with the
+game's own instruments from `FAT.AD`, and nothing has to be converted. It
+needs a fast CPU: on a 68040/40 it costs about 10% of the frame rate, on a
+68060 a few percent. Not recommended for a 68030.
+
 **MIDI.** The game sends its music to camd.library, the AmigaOS MIDI system,
 in real time, so an external GM or MT-32 module plays it and the Amiga
 synthesises nothing. Without CAMD the notes go straight out of the serial
@@ -92,8 +97,9 @@ RATE=22050 DANE=/path/to/your/LBX/files sh build/muzyka-host.sh
 
 `remom-prefs` is a small Workbench program for the settings: graphics (AGA or
 RTG), video mode (Auto, PAL or NTSC), screen title bar, FPS on the bar, system
-pointer, music (off, files or MIDI), music quality and synthesiser. It also
-converts and deletes the music. The other
+pointer, music (off, files, MIDI or AdLib live), music quality, synthesiser
+and *Console* (a window with the game's text output when started from the
+icon; off by default). It also converts and deletes the music. The other
 options are also in the game's main menu under **Amiga Options**. Settings are saved to `amiga.cfg`.
 
 ## Building from source

@@ -51,10 +51,41 @@ void Amiga_WB_Start(int argc)
         amiga_wb_katalog_zmieniony = 1;
         atexit(Amiga_WB_Koniec);
     }
-    freopen("mom-wb.log", "w", stdout);
+    /* console=1 w amiga.cfg (remom-prefs "Console"): okno z tekstem gry;
+       domyslnie bez okna - stdout do mom-wb.log, stderr do NIL: (0.3.1,
+       gracz: okno CLI przy starcie). Opcje gry czytane sa pozniej, wiec
+       tu jeden klucz wprost z pliku. */
+    {
+        FILE * f = fopen("amiga.cfg", "r");
+        char linia[80];
+        int okno = 0;
+        if(f != NULL)
+        {
+            while(fgets(linia, sizeof(linia), f) != NULL)
+            {
+                if(linia[0] == 'c' && linia[1] == 'o' && linia[2] == 'n' && linia[3] == 's'
+                   && linia[7] == '=' && linia[8] == '1')
+                {
+                    okno = 1;
+                }
+            }
+            fclose(f);
+        }
+        if(okno)
+        {
+            freopen("CON:0/12/640/180/Master of Magic - output/AUTO/CLOSE/WAIT", "w", stdout);
+            freopen("NIL:", "w", stderr);
+        }
+        else
+        {
+            freopen("mom-wb.log", "w", stdout);
+            freopen("NIL:", "w", stderr);
+        }
+    }
     printf("[amiga] start z Workbencha: %s\n", (char *)_WBenchMsg->sm_ArgList[0].wa_Name);
     fflush(stdout);
 }
+
 
 static int Amiga_WB_Jest(void)
 {

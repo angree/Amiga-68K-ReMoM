@@ -52,7 +52,7 @@
 #include "muzyka_konw.h"
 
 static const char verstag[] __attribute__((used)) =
-    "$VER: remom-prefs 0.3.0 (25.09.2026)";
+    "$VER: remom-prefs 0.4.0 (25.09.2026)";
 
 #define PLIK "PROGDIR:amiga.cfg"
 
@@ -62,7 +62,7 @@ struct Library *GadToolsBase = NULL;
 /*  Ustawienia                                                              */
 /* ------------------------------------------------------------------------ */
 
-enum { O_GFX, O_VIDEO, O_BAR, O_FPS, O_CURSOR, O_MUSIC, O_MRATE, O_SYNTH, O_COUNT };
+enum { O_GFX, O_VIDEO, O_BAR, O_FPS, O_CURSOR, O_MUSIC, O_MRATE, O_SYNTH, O_CONSOLE, O_COUNT };
 
 typedef struct
 {
@@ -100,11 +100,12 @@ static const opcja_t OPCJE[O_COUNT] = {
       { "Game", "System", NULL, NULL, NULL },
       { "The game's own mouse cursor.",
         "The Workbench pointer - smooth at 50 Hz.", NULL, NULL }, 0 },
-    { "music", "Music:", "MUSIC", 'M', 3,
-      { "Off", "Files", "MIDI", NULL, NULL },
+    { "music", "Music:", "MUSIC", 'M', 4,
+      { "Off", "Files", "MIDI", "AdLib live", NULL },
       { "No music (sound effects stay). Saves some CPU.",
         "Converted music files from the muzyka drawer.",
-        "MIDI via camd.library to an external synth (GM or MT-32 module).", NULL }, 1 },
+        "MIDI via camd.library to an external synth (GM or MT-32 module).", 
+        "AdLib computed live in the game - needs a fast CPU (68060); needs FAT.AD." }, 1 },
     { "musicrate", "Music quality:", "MUSICRATE", 'R', 2,
       { "11kHz", "22kHz", NULL, NULL, NULL },
       { "Convert at 11 kHz: needs about 32 MB of disk space.",
@@ -113,6 +114,10 @@ static const opcja_t OPCJE[O_COUNT] = {
       { "Simple", "AdLib", NULL, NULL, NULL },
       { "Convert with the small built-in synthesiser.",
         "Convert with AdLib FM and the game's own instruments (needs FAT.AD).", NULL, NULL }, 0 },
+    { "console", "Console:", "CONSOLE", 'O', 2,
+      { "Off", "On", NULL, NULL, NULL },
+      { "No text window when started from the icon (log: mom-wb.log).",
+        "Show the game's text output in a window when started from the icon.", NULL, NULL }, 0 },
 };
 
 static int wart[O_COUNT];
@@ -191,7 +196,7 @@ static void opis_maszyny(char *dst, int cap)
 #define GID_SAVE  30
 #define GID_CANCEL 31
 
-#define KLAWISZE "Keys: G V B F P M R Y change  C convert  D delete  S save"
+#define KLAWISZE "Keys: G V B F P M R Y O change  C convert  D delete  S save"
 #define GID_KONW 32
 #define GID_KASUJ 33
 #define GID_STATUS 42
@@ -472,7 +477,7 @@ static int okno(int test_ms, int test_konw, int test_kasuj)
     y = gap;
 
     for (i = 0; i < O_COUNT; i++) {
-        int kol = (i < 4) ? 0 : 1, wiersz = (i < 4) ? i : i - 4;
+        int kol = (i < 5) ? 0 : 1, wiersz = (i < 5) ? i : i - 5;   /* 5 z lewej, reszta z prawej */
         ng.ng_LeftEdge = leftb + lm + labw + kol * (labw + gadw + cw * 3);
         ng.ng_TopEdge = topb + y + wiersz * (gh + 2);
         ng.ng_Width = gadw;
@@ -485,7 +490,7 @@ static int okno(int test_ms, int test_konw, int test_kasuj)
                            GTCY_Active, (ULONG)wart[i], TAG_END);
         cykl[i] = gad;
     }
-    y += 4 * (gh + 2) + gap;
+    y += 5 * (gh + 2) + gap;
 
     /* wspolna podpowiedz: opis opcji zmienionej ostatnio */
     ng.ng_LeftEdge = leftb + lm;
@@ -659,6 +664,8 @@ static int okno(int test_ms, int test_konw, int test_kasuj)
 static int rowne(const char *a, const char *b)
 {
     while (*a && *b) {
+        if (*a == ' ') { a++; continue; }   /* "AdLib live" = ADLIBLIVE w Shellu */
+        if (*b == ' ') { b++; continue; }
         int ca = (*a >= 'A' && *a <= 'Z') ? *a + 32 : *a;
         int cb = (*b >= 'A' && *b <= 'Z') ? *b + 32 : *b;
         if (ca != cb) return 0;

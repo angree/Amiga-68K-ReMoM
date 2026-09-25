@@ -416,7 +416,7 @@ static struct BitMap  *g_tempbm;
  * here - so the bar always shows the game's own name and version and this
  * file never hard-codes either. The default only ever shows if the screen
  * opens before the game names itself. */
-static UBYTE g_screen_title[80] = "Master of Magic 0.3.0";
+static UBYTE g_screen_title[80] = "Master of Magic 0.4.0";
 
 void amigagfx_set_screen_title(const char *t)
 {
@@ -875,7 +875,11 @@ static int open_screen_aga(int w, int h, ULONG quiet, ULONG title, int depth)
 		             : (s_video_mode == 2) ? (ULONG)NTSC_MONITOR_ID
 		             : 0UL;
 		int   lores  = (w <= 400);
-		int   lace   = (h > gfx_standard_rows());
+		/* Przeplot dopiero, gdy wysokosc nie miesci sie nawet w overscanie.
+		 * Bylo (h > rows): ekran gry z paskiem ma 211 linii, na NTSC (200)
+		 * wychodzil przeplot i obraz o polowie wysokosci - gracz 0.3.0:
+		 * "dalem NTSC i mi sprasowalo obraz". 211 miesci sie w overscanie. */
+		int   lace   = (h > gfx_standard_rows() + gfx_standard_rows() / 4);
 		int   overscan;
 
 		modeid |= lores ? LORES_KEY : HIRES_KEY;

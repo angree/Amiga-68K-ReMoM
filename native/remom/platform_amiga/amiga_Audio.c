@@ -28,6 +28,7 @@
 #include "amiga_audio.h"
 #include "amiga_adpcm.h"
 #include "amiga_camd.h"
+#include "remom/muzyka_konw.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,6 +53,8 @@ extern void (*amiga_pompa_muzyki)(void);   /* MoX/src/random.c (latka) */
 void Amiga_Audio_Service(void);
 
 static AdpcmStream * amiga_muzyka = NULL;
+static konw_t * amiga_adlib = NULL;         /* music=3: AdLib liczony na zywo */
+extern int amiga_opt_muzyka_22;
 static unsigned long amiga_muzyka_fnv = 0;
 static int amiga_muzyka_petla = 0;
 
@@ -71,6 +74,11 @@ static int Amiga_Muzyka_Refill(void * ud, signed char * dst, int max)
 static void Amiga_Muzyka_Stop(void)
 {
     AmigaAudio_MusicStop();
+    if(amiga_adlib != NULL)
+    {
+        Konw_Koniec(amiga_adlib);
+        amiga_adlib = NULL;
+    }
     if(amiga_muzyka != NULL)
     {
         Adpcm_Close(amiga_muzyka);
@@ -144,7 +152,7 @@ void Amiga_Audio_Service(void)
     {
         Amiga_Midi_Serwis();
     }
-    if(amiga_muzyka != NULL)
+    if(amiga_muzyka != NULL || amiga_adlib != NULL)
     {
         amiga_audio_serwis_licznik++;
         AmigaAudio_MusicService();
@@ -308,6 +316,51 @@ static int16_t Amiga_Audio_VOC(const uint8_t * p, uint32_t rozmiar)
     return -1;
 }
 
+/* ---- AdLib na zywo (music=3, 0.3.0) ------------------------------------
+   Synteza z native/remom/muzyka_konw.c liczona w trakcie gry i wlewana do
+   buforow Pauli (kanaly 2 i 3, jak pliki). Dla szybkich CPU (68060): na 68030
+   zjada kilkadziesiat procent. Brak FAT.AD -> muzyka z plikow. */
+#define AMIGA_ADLIB_CHUNK 2048
+static int amiga_adlib_zgloszone = 0;
+
+static int Amiga_AdLib_Refill(void * ud, signed char * dst, int max)
+{
+    return Konw_Graj((konw_t *)ud, dst, max);
+}
+
+/* 1 = gra AdLib, 0 = nie da sie (gra bierze pliki) */
+static int Amiga_Audio_AdLib(const uint8_t * p, uint32_t rozmiar, unsigned long h)
+{
+    char blad[64];
+    long hz = amiga_opt_muzyka_22 ? 22050L : 11025L;
+    konw_t * k;
+    if(amiga_adlib != NULL && h == amiga_muzyka_fnv) { return 1; }
+    if(!Amiga_Audio_Gotowe()) { return 1; }
+    Amiga_Muzyka_Stop();
+    k = Konw_Na_Zywo(hz, p, rozmiar, blad, (int)sizeof(blad));
+    if(k == NULL)
+    {
+        if(!amiga_adlib_zgloszone)
+        {
+            amiga_adlib_zgloszone = 1;
+            printf("[amiga] muzyka AdLib na zywo: %s - pliki\n", blad);
+            fflush(stdout);
+        }
+        return 0;
+    }
+    AmigaAudio_MusicSetVolume(AMIGA_MUS_VOLUME);
+    if(!AmigaAudio_MusicStart((int)(AMIGA_PAL_CLOCK / hz), AMIGA_ADLIB_CHUNK, Amiga_AdLib_Refill, k))
+    {
+        Konw_Koniec(k);
+        return 1;
+    }
+    amiga_adlib = k;
+    amiga_muzyka_fnv = h;
+    amiga_pompa_muzyki = Amiga_Audio_Service;
+    LOG_INFO(LOG_CAT_PFL, "[amiga] muzyka AdLib na zywo: %08lx, %ld Hz", h, hz);
+    return 1;
+}
+
 static int16_t Amiga_Audio_Muzyka(const uint8_t * p, uint32_t rozmiar)
 {
     unsigned long h = 2166136261UL;
@@ -339,6 +392,10 @@ static int16_t Amiga_Audio_Muzyka(const uint8_t * p, uint32_t rozmiar)
     if(amiga_opt_muzyka == 2 && Amiga_Audio_Midi(p, rozmiar, h))
     {
         return -1;                  /* MIDI przez camd.library */
+    }
+    if(amiga_opt_muzyka == 3 && Amiga_Audio_AdLib(p, rozmiar, h))
+    {
+        return -1;                  /* AdLib na zywo */
     }
     if(amiga_muzyka != NULL && h == amiga_muzyka_fnv)
     {

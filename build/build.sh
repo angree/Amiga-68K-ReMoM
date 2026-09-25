@@ -217,10 +217,10 @@ sh "$WORK/buildscripts/cc-one.sh" "$SRC" "src/ReMoM.c" "$OBJ"
 # amiga_Req.c ciagnie naglowki systemu - bez wymuszonego amiga_le.h;
 # amiga_gfx.c to warstwa z portu OpenXcom.
 export CC_FLAGS="$NATIVE_FLAGS"
-for f in remom/platform_amiga/amiga_Req.c amiga_gfx.c amiga_audio.c amiga_adpcm.c amiga_camd.c remom/platform_amiga/amiga_Domyslny_aga.c; do
+for f in remom/platform_amiga/amiga_Req.c amiga_gfx.c amiga_audio.c amiga_adpcm.c amiga_camd.c remom/muzyka_konw.c remom/platform_amiga/amiga_Domyslny_aga.c; do
 	sh "$WORK/buildscripts/cc-one.sh" "$NATIVE" "$f" "$OBJ"
 done
-REMOM_BACKEND="$REMOM_BACKEND $OBJ/remom_platform_amiga_amiga_Req.c.o $OBJ/amiga_gfx.c.o $OBJ/amiga_audio.c.o $OBJ/amiga_adpcm.c.o $OBJ/amiga_camd.c.o $WORK/xmid-amiga.o"
+REMOM_BACKEND="$REMOM_BACKEND $OBJ/remom_platform_amiga_amiga_Req.c.o $OBJ/amiga_gfx.c.o $OBJ/amiga_audio.c.o $OBJ/amiga_adpcm.c.o $OBJ/amiga_camd.c.o $OBJ/remom_muzyka_konw.c.o $WORK/xmid-amiga.o"
 # MIDI przez camd.library (native/amiga_camd.c z portu OpenTTD) + konwerter
 # XMIDI ReMoM wyciety mechanicznie (build/xmi2mid-gen.py ... biblioteka) - 0.3.0
 python3 "$WORK/buildscripts/xmi2mid-gen.py" "$WORK/stage/ReMoM" "$WORK/xmid-amiga.c" biblioteka >/dev/null
