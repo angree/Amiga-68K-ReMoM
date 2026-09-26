@@ -937,6 +937,18 @@ def latki_menu_amigi():
            "        *(pict_seg + SZ_FLIC_HDR + itr_length) = color;",
            "        *(pict_seg + SZ_FLIC_HDR + itr_length - 1) = color;  /* AMIGA: bylo bez -1 */", ile=1)
 
+    # 0.4.2 (gracz: w lokacji walka bez straznikow, po turze wyjscie do WB):
+    # Combat() ustawial combat_defender_player_idx tylko dla walki z oddzialem.
+    # Przy lokacji zostawal 0 = gracz, wiec Prepare_All_Battle_Units nie
+    # zbieral straznikow (gracz neutralny 5) - "wygrana" bez wrogow, a
+    # stworzeni straznicy zostawali na mapie. To samo przy oblezeniu miasta.
+    # Blad rekonstrukcji ReMoM; tu: lokacja -> gracz neutralny, miasto -> wlasciciel.
+    zamien("MoM/src/Combat.c",
+           "            _players[NEUTRAL_PLAYER_IDX].banner_id = BNR_Brown;\n            Lair_Make_Guardians(_combat_environ_idx);",
+           "            _players[NEUTRAL_PLAYER_IDX].banner_id = BNR_Brown;\n            combat_defender_player_idx = NEUTRAL_PLAYER_IDX;  /* AMIGA: nie bylo ustawiane */\n            Lair_Make_Guardians(_combat_environ_idx);", ile=1)
+    zamien("MoM/src/Combat.c",
+           "            _players[NEUTRAL_PLAYER_IDX].banner_id = BNR_Brown;\n            _combat_wx = _CITIES[_combat_environ_idx].wx;",
+           "            _players[NEUTRAL_PLAYER_IDX].banner_id = BNR_Brown;\n            combat_defender_player_idx = _CITIES[_combat_environ_idx].owner_idx;  /* AMIGA: nie bylo ustawiane */\n            _combat_wx = _CITIES[_combat_environ_idx].wx;", ile=1)
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
            "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",

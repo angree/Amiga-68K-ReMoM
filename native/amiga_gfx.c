@@ -416,7 +416,7 @@ static struct BitMap  *g_tempbm;
  * here - so the bar always shows the game's own name and version and this
  * file never hard-codes either. The default only ever shows if the screen
  * opens before the game names itself. */
-static UBYTE g_screen_title[80] = "Master of Magic 0.4.1";
+static UBYTE g_screen_title[80] = "Master of Magic 0.4.2";
 
 void amigagfx_set_screen_title(const char *t)
 {
