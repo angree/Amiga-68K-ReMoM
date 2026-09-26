@@ -33,7 +33,8 @@ copy of Master of Magic. The GOG version works (see below).
      GOG folder as `MAGIC.EXE` and the LBX files; in the GOG version that is
      `Master of Magic Official Release`.
    - optionally your `SAVE1.GAM` to `SAVE9.GAM`. Saves are byte-compatible
-     with the PC version in both directions.
+     with the PC version in both directions. Saves made with older versions
+     of this port may not work, or may work incorrectly.
 4. Unpack the release archive into the same directory. It contains `remom`,
    `remom-prefs`, their icons, and `remom-music.exe` for the PC.
 5. Start `remom` from its icon. To start it from a Shell, set the stack first

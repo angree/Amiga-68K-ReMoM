@@ -1,0 +1,209 @@
+# autoinput-lokacja3.txt - lokacja 5 + 3 tury po walce (szukanie wyjscia do WB)
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+snap l-mapa
+click 50 137
+wait 4000
+snap l-pytanie
+click 200 152
+wait 6000
+snap l-walka
+type a
+wait 150000
+snap l-po-walce
+key return
+wait 4000
+snap l-lupy
+key return
+wait 3000
+snap l-koniec
+click 280 185
+wait 150000
+snap l3-t1
+type a
+wait 150000
+snap l3-po-obronie
+key return
+wait 4000
+snap l3-po-obronie2
+key return
+wait 4000
+snap l3-po-obronie3
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+snap l3-przed-t2
+wait 150000
+snap l3-t2
+key return
+wait 3000
+key return
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+snap l3-przed-t3
+wait 150000
+snap l3-t3
+key return
+wait 3000
+key return
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+click 262 191
+wait 3000
+snap l3-przed-t4
+wait 150000
+snap l3-t4
+key return
+wait 3000
+key return
+wait 3000
+wait 1000
+quit

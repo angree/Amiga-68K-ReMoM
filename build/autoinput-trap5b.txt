@@ -1,0 +1,77 @@
+# autoinput-trap5b.txt - gra wczytana, potem Quit do menu i nowa gra; pierwsza tura
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+snap t5b-wczytana
+click 25 8
+wait 4000
+snap t5b-load
+click 60 177
+wait 4000
+snap t5b-menu
+click 160 155
+wait 3000
+click 283 186
+wait 3000
+click 202 34
+wait 3000
+key return
+wait 3000
+click 238 82
+wait 3000
+click 245 72
+wait 5000
+wait 2000
+key return
+wait 2000
+snap t5b-stolica
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 261 193
+wait 90000
+snap t5b-tura-2
+key return
+wait 2500
+key return
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 261 193
+wait 90000
+snap t5b-tura-3
+key return
+wait 2500
+key return
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 261 193
+wait 90000
+snap t5b-tura-4
+key return
+wait 2500
+key return
+wait 2500
+quit

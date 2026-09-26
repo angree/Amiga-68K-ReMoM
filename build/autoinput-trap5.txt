@@ -1,0 +1,27 @@
+# autoinput-trap5.txt - zapis gracza przez Continue, Next Turn (CPU TRAP 5 u gracza)
+wait 4000
+type c
+wait 10000
+snap t5-mapa
+click 288 180
+wait 3000
+click 288 180
+wait 3000
+click 288 180
+wait 3000
+click 288 180
+wait 3000
+click 288 180
+wait 3000
+click 288 180
+wait 3000
+click 288 180
+wait 3000
+click 288 180
+wait 3000
+snap t5-patrol
+click 261 193
+wait 150000
+snap t5-tura
+wait 1000
+quit

@@ -1,0 +1,91 @@
+# autoinput-trap5c.txt - wczytanie SAVE2.ZLY, Patrol, Next Turn
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+snap t5c-mapa
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 261 193
+wait 150000
+snap t5c-tura1
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 261 193
+wait 150000
+snap t5c-tura2
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 261 193
+wait 150000
+snap t5c-tura3
+quit

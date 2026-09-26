@@ -949,6 +949,31 @@ def latki_menu_amigi():
     zamien("MoM/src/Combat.c",
            "            _players[NEUTRAL_PLAYER_IDX].banner_id = BNR_Brown;\n            _combat_wx = _CITIES[_combat_environ_idx].wx;",
            "            _players[NEUTRAL_PLAYER_IDX].banner_id = BNR_Brown;\n            combat_defender_player_idx = _CITIES[_combat_environ_idx].owner_idx;  /* AMIGA: nie bylo ustawiane */\n            _combat_wx = _CITIES[_combat_environ_idx].wx;", ile=1)
+    # 0.4.3 (gracz: CPU TRAP 5 w AI_Evaluate_Continents po "Next Turn", wyjscie
+    # do WB). Cel wojny AI (_ai_landmass_war_targets, w rekordzie gracza 5)
+    # nie byl zerowany przy nowej grze - ReMoM to jeden proces, a w oryginale
+    # nowa gra startowala w swiezym WIZARDS.EXE. Stary numer kontynentu, ktorego
+    # nie ma na nowej mapie, ma 0 pol wybrzeza -> dzielenie przez 0 (faza 9),
+    # a AI_Choose_War_Landmass nigdy go nie zmienia (lmt_Unevaluated = nic).
+    # Taki cel trafia tez do zapisu. Odtworzone: run-remom-trap5c (SAVE2.ZLY).
+    # 1) nowa gra: cele wojny wyzerowane
+    zamien("MoM/src/INITGAME.c",
+           "    Init_Players();\n",
+           "    { int16_t amiga_i; for(amiga_i = 0; amiga_i < 6; amiga_i++) { _ai_landmass_war_targets[0][amiga_i] = 0; _ai_landmass_war_targets[1][amiga_i] = 0; } }  /* AMIGA: smieci z poprzedniej gry */\n    Init_Players();\n", ile=1)
+    # 2) cel bez wybrzeza (nieistniejacy kontynent, zly zapis) = brak celu -> AI wybiera nowy
+    zamien("MoM/src/AIMOVE.c",
+           "        landmass_idx = _ai_landmass_war_targets[wp][player_idx];\n\n        if(landmass_idx == 0)  /* this player has no war/jihad landmass on this plane */",
+           "        landmass_idx = _ai_landmass_war_targets[wp][player_idx];\n"
+           "        if((landmass_idx < 0) || (landmass_idx >= NUM_LANDMASSES) || (_ai_landmass_dock_squares_heads[wp][landmass_idx] == ST_UNDEFINED)) { landmass_idx = 0; }  /* AMIGA: cel na nieistniejacym kontynencie */\n\n"
+           "        if(landmass_idx == 0)  /* this player has no war/jihad landmass on this plane */", ile=1)
+    # 3) dzielenie przez liczbe pol wybrzeza zabezpieczone (ReMoM: OGBUG)
+    zamien("MoM/src/AIMOVE.c",
+           "        /* OGBUG: possible division by 0, should `if(landmass_node_count > 0)` */\n        landmass_node_centroid_wx /= landmass_node_count;\n        landmass_node_centroid_wy /= landmass_node_count;",
+           "        /* OGBUG: possible division by 0, should `if(landmass_node_count > 0)` */\n        if(landmass_node_count > 0)  /* AMIGA */\n        {\n        landmass_node_centroid_wx /= landmass_node_count;\n        landmass_node_centroid_wy /= landmass_node_count;\n        }", ile=1)
+    zamien("MoM/src/AIMOVE.c",
+           "                /* OGBUG: divide by zero, should `if(landmass_node_count > 0)` */\n                landmass_node_centroid_wx /= landmass_node_count;",
+           "                /* OGBUG: divide by zero, should `if(landmass_node_count > 0)` */\n                if(landmass_node_count == 0) { continue; }  /* AMIGA: cel bez wybrzeza */\n                landmass_node_centroid_wx /= landmass_node_count;", ile=1)
+
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
            "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",
