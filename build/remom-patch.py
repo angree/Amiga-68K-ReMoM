@@ -46,6 +46,124 @@ def zapisz(rel, tekst):
         f.write(tekst)
 
 
+AMIGA_POOL_C = r"""/* AMIGA 0.4.4: pula w najwyzej dwoch blokach z malloc (zamiast tablicy w .bss). */
+#include <stdio.h>
+#include <stdlib.h>
+
+#define AMIGA_POOL_ZAPAS (512UL * 1024UL)   /* zostaje na inne alokacje (pliki, dzwiek) */
+#define AMIGA_POOL_KROK  (128UL * 1024UL)
+
+static uint8_t * pool_obszar[2] = { NULL, NULL };
+static uint32_t pool_obszar_rozm[2] = { 0, 0 };
+static uint32_t pool_obszar_uzyte[2] = { 0, 0 };
+static int pool_przydzielona = 0;
+
+static uint32_t pool_next_offset = POOL_LEADING_GUARD;   /* suma zajetego (z oslona) */
+static int pool_initialized = 0;
+static uint32_t pool_peak_offset = POOL_LEADING_GUARD;
+
+void (*amiga_pool_pamiec)(const char *) = NULL;   /* amiga_Preload.c: wypisuje wolna pamiec (tylko gra z ekranem) */
+
+static uint8_t * Amiga_Pool_Najwiekszy(uint32_t chce, uint32_t * dostal)
+{
+    uint32_t r = chce;
+    while(r >= AMIGA_POOL_KROK)
+    {
+        uint8_t * p = (uint8_t *)malloc((size_t)r);
+        if(p != NULL) { *dostal = r; return p; }
+        r -= AMIGA_POOL_KROK;
+    }
+    *dostal = 0;
+    return NULL;
+}
+
+static void Amiga_Pool_Przydziel(void)
+{
+    void * zapas;
+    uint32_t reszta = POOL_SIZE;
+    uint32_t d = 0;
+    int i;
+    pool_przydzielona = 1;
+    if(amiga_pool_pamiec != NULL) { amiga_pool_pamiec("przed pula"); }
+    zapas = malloc((size_t)AMIGA_POOL_ZAPAS);
+    for(i = 0; i < 2 && reszta >= AMIGA_POOL_KROK; i++)
+    {
+        pool_obszar[i] = Amiga_Pool_Najwiekszy(reszta, &d);
+        if(pool_obszar[i] == NULL) { break; }
+        pool_obszar_rozm[i] = d;
+        reszta -= d;
+    }
+    if(zapas != NULL) { free(zapas); }
+    if(amiga_pool_pamiec != NULL) { amiga_pool_pamiec("po puli"); }
+    printf("[amiga] pula: %lu KB + %lu KB (chce %lu KB)%s\n",
+           (unsigned long)(pool_obszar_rozm[0] / 1024), (unsigned long)(pool_obszar_rozm[1] / 1024),
+           (unsigned long)(POOL_SIZE / 1024),
+           ((pool_obszar_rozm[0] + pool_obszar_rozm[1]) < POOL_MIN_ARENA_BYTES) ? " - MALO PAMIECI, gra moze sie zakonczyc" : "");
+    fflush(stdout);
+}
+
+
+void Pool_Init(void)
+{
+    int i;
+    if(!pool_przydzielona) { Amiga_Pool_Przydziel(); }
+    for(i = 0; i < 2; i++)
+    {
+        if(pool_obszar[i] != NULL) { memset(pool_obszar[i], POOL_SENTINEL_BYTE, pool_obszar_rozm[i]); }
+        pool_obszar_uzyte[i] = 0;
+    }
+    pool_obszar_uzyte[0] = POOL_LEADING_GUARD;
+    pool_next_offset = POOL_LEADING_GUARD;
+    pool_peak_offset = POOL_LEADING_GUARD;
+    pool_initialized = 1;
+}
+
+
+uint8_t * Pool_Carve(uint32_t bytes)
+{
+    int i;
+
+    if(pool_initialized == 0) { Pool_Init(); }
+
+    for(i = 0; i < 2; i++)
+    {
+        uint32_t koniec;
+        if(pool_obszar[i] == NULL || pool_obszar_rozm[i] <= POOL_FIXED_MARGIN) { continue; }
+        koniec = pool_obszar_rozm[i] - POOL_FIXED_MARGIN;
+        if(pool_obszar_uzyte[i] <= koniec && bytes <= (koniec - pool_obszar_uzyte[i]))
+        {
+            uint8_t * carved = pool_obszar[i] + pool_obszar_uzyte[i];
+            pool_obszar_uzyte[i] += bytes;
+            pool_next_offset += bytes;
+            if(pool_next_offset > pool_peak_offset) { pool_peak_offset = pool_next_offset; }
+            return carved;
+        }
+    }
+
+    Allocation_Error(1, (uint16_t)(bytes / 16));  /* fatal; error 1 == out of memory */
+    return NULL;  /* not reached */
+}
+
+
+uint32_t Pool_Bytes_Used(void)
+{
+    return pool_next_offset;
+}
+
+
+uint32_t Pool_Bytes_Free(void)
+{
+    uint32_t cap = pool_obszar_rozm[0] + pool_obszar_rozm[1];
+    return (cap > pool_next_offset) ? (cap - pool_next_offset) : 0;
+}
+
+
+uint32_t Pool_Bytes_Peak(void)
+{
+    return pool_peak_offset;
+}
+"""
+
 def zamien(rel, stare, nowe, ile=None):
     """Dokladna zamiana. ile=None: wszystkie wystapienia (co najmniej jedno)."""
     t = czytaj(rel)
@@ -973,6 +1091,98 @@ def latki_menu_amigi():
     zamien("MoM/src/AIMOVE.c",
            "                /* OGBUG: divide by zero, should `if(landmass_node_count > 0)` */\n                landmass_node_centroid_wx /= landmass_node_count;",
            "                /* OGBUG: divide by zero, should `if(landmass_node_count > 0)` */\n                if(landmass_node_count == 0) { continue; }  /* AMIGA: cel bez wybrzeza */\n                landmass_node_centroid_wx /= landmass_node_count;", ile=1)
+
+    # 0.4.4 preload (remom-prefs "Preload"): gra otwiera LBX przez
+    # STU_GRAF_Open_Asset; wskaznik ustawia native/remom/platform_amiga/
+    # amiga_Preload.c tylko w grze z ekranem (hemom zostaje bez zmian).
+    zamien("STU/src/STU_GRAF.c",
+           "FILE * STU_GRAF_Open_Asset(const char * name, const char * mode)\n{\n    int i;\n    char full[STU_GRAF_PATH_MAX];\n",
+           "FILE * (*amiga_preload_otworz)(const char *, const char *) = NULL;  /* AMIGA: preload do RAM: */\n"
+           "FILE * STU_GRAF_Open_Asset(const char * name, const char * mode)\n{\n    int i;\n    char full[STU_GRAF_PATH_MAX];\n"
+           "    if(amiga_preload_otworz != NULL) { FILE * amiga_fp = amiga_preload_otworz(name, mode); if(amiga_fp != NULL) { return amiga_fp; } }  /* AMIGA */\n", ile=1)
+
+    # 0.4.4 (EAB: "nie dziala z 8 MB FastRAM"): pula 6 MiB byla tablica w .bss,
+    # a .bss musi byc JEDNYM ciaglym blokiem - 7,26 MB .bss + 1,2 MB kodu nie
+    # wchodzi na 8 MB. Teraz pula to najwyzej dwa bloki z malloc przy starcie
+    # (najpierw najwiekszy mozliwy - Fast; reszta z tego, co zostalo, takze
+    # Chip), z zapasem 512 KB zostawionym na inne alokacje. Kolejnosc wycinania
+    # dalej deterministyczna (pierwszy blok, w ktory sie miesci).
+    zamien("STU/src/STU_LOG.c",
+           "((size_t)(512 * 1024))  /* AMIGA: bylo 16 MB */",
+           "((size_t)(128 * 1024))  /* AMIGA: bylo 16 MB (0.4.4: 512 KB -> 128 KB, log i tak pisany od razu) */", ile=1)
+    t = czytaj("MoX/src/Allocate_Pool.c")
+    znacznik = "static uint8_t pool_storage[POOL_SIZE];"
+    if t.count(znacznik) != 1:
+        sys.exit("LATKA NIE PASUJE: MoX/src/Allocate_Pool.c (pool_storage)")
+    t = t[:t.index(znacznik)] + AMIGA_POOL_C
+    zapisz("MoX/src/Allocate_Pool.c", t)
+
+    # 0.4.4 (8 MB): Video2.c alokuje bufory powiekszenia 2x dla PC: 4 x 256 KB
+    # (640x400) i 4 x 1 MB (XBGR) - ~5 MB, ktorych nikt nie czyta (tylko
+    # malloc i memset w Video2.c). Na Amidze obraz jest 320x200 - wylaczone.
+    for rozm, pole in (("(640 * 400 * 1)", "video_page_buffer_2x"), ("(640 * 400 * 4)", "video_page_buffer_2x_XBGR")):
+        for i in range(4):
+            zamien("MoX/src/Video2.c",
+                   "    %s[%d] = (uint8_t*)malloc( %s );\n" % (pole, i, rozm),
+                   "    %s[%d] = NULL;  /* AMIGA: nieuzywany bufor PC */\n" % (pole, i), ile=1)
+    for i in range(4):
+        zamien("MoX/src/Video2.c", "    memset(video_page_buffer_2x[%d], 0, screen_pixel_size * 2);\n" % i, "", ile=1)
+        zamien("MoX/src/Video2.c", "    memset(video_page_buffer_2x_XBGR[%d], 0, (640 * 400 * 4));\n" % i, "", ile=1)
+
+    # 0.4.4 (gracz: "pierwsza mapa po uruchomieniu gry bywa taka sama"):
+    # Randomize() bral ziarno z Read_System_Clock_Timer() = czas od startu
+    # systemu / 55 ms. Amiga uruchamiana zawsze tak samo daje male, podobne
+    # ziarna, a xorshift z podobnych malych ziaren zaczyna podobnie. Ziarno
+    # mieszane z zegarem sciennym i mikrosekundami (fmix32), nigdy 0.
+    # --seed1/--seed2 (testy, porownanie z PC) nie przechodza przez Randomize.
+    zamien("MoX/src/random.c",
+           "    timer_value = (uint32_t)Read_System_Clock_Timer();\n",
+           "    timer_value = (uint32_t)Read_System_Clock_Timer();\n"
+           "    { /* AMIGA 0.4.4: ziarno mieszane - czas od startu systemu bywa za kazdym razem podobny */\n"
+           "        extern uint64_t Platform_Get_Micros(void);\n"
+           "        uint32_t h = timer_value ^ ((uint32_t)time(NULL) * 2654435761UL) ^ ((uint32_t)Platform_Get_Micros() * 2246822519UL);\n"
+           "        h ^= h >> 16; h *= 0x85EBCA6BUL; h ^= h >> 13; h *= 0xC2B2AE35UL; h ^= h >> 16;\n"
+           "        timer_value = (h != 0) ? h : 0x35683568UL;\n"
+           "    }\n", ile=1)
+    zamien("MoX/src/random.c",
+           "#include <stdio.h>  /* CLAUDE: fprintf(stderr, ...) for [RNG] diagnostic logging */\n",
+           "#include <stdio.h>  /* CLAUDE: fprintf(stderr, ...) for [RNG] diagnostic logging */\n#include <time.h>   /* AMIGA 0.4.4: time() do ziarna */\n", ile=1)
+
+    # 0.4.4 (gracz: "Info > Cartographer - nie widac mapy"): w ReMoM teren
+    # Cartographera jest niedokonczony (TODO ... NOWORKIE, a w miejsce mapy
+    # pusty obrazek - HACK). Tu: kazde odkryte pole jako kwadrat 4x4 w kolorze
+    # terenu z minimapy (TERRAIN.LBX 2, jak Draw_Minimap). Oryginal skaluje
+    # kafle w odcieniach pergaminu - to przyblizenie, ale mapa jest.
+    zamien("MoM/src/AdvsrScr.c",
+           "    /* HACK */  Create_Picture(CARTOGRAPHER_MAP_WIDTH, CARTOGRAPHER_MAP_HEIGHT, (cartograph_seg + 16));  // (WORLD_WIDTH * 4) x (WORLD_HEIGHT * 4)\n",
+           "    /* HACK */  Create_Picture(CARTOGRAPHER_MAP_WIDTH, CARTOGRAPHER_MAP_HEIGHT, (cartograph_seg + 16));  // (WORLD_WIDTH * 4) x (WORLD_HEIGHT * 4)\n"
+           "    { /* AMIGA 0.4.4: teren z kolorow minimapy (w ReMoM niedokonczony) */\n"
+           "        uint8_t * amiga_px = (uint8_t *)(cartograph_seg + 16) + SZ_FLIC_HDR;\n"
+           "        int16_t * amiga_teren = (int16_t *)(_world_maps + (flag * WORLD_SIZE_DW));\n"
+           "        int16_t amiga_x, amiga_y, amiga_dx, amiga_dy;\n"
+           "        uint8_t amiga_kolor;\n"
+           "        for(amiga_x = 0; amiga_x < WORLD_WIDTH; amiga_x++)\n"
+           "        {\n"
+           "            for(amiga_y = 0; amiga_y < WORLD_HEIGHT; amiga_y++)\n"
+           "            {\n"
+           "                if(GET_SQUARE_EXPLORED(amiga_x, amiga_y, flag) == UNEXPLORED) { continue; }\n"
+           "                amiga_kolor = m_terrain_lbx_002[amiga_teren[(amiga_y * WORLD_WIDTH) + amiga_x] + (flag * NUM_TERRAIN_TYPES)];\n"
+           "                for(amiga_dx = 0; amiga_dx < 4; amiga_dx++)\n"
+           "                {\n"
+           "                    for(amiga_dy = 0; amiga_dy < 4; amiga_dy++)\n"
+           "                    {\n"
+           "                        amiga_px[(((amiga_x * 4) + amiga_dx) * CARTOGRAPHER_MAP_HEIGHT) + ((amiga_y * 4) + amiga_dy)] = amiga_kolor;\n"
+           "                    }\n"
+           "                }\n"
+           "            }\n"
+           "        }\n"
+           "    }\n", ile=1)
+
+    # 0.4.4 (gracz: Surveyor na Nightshade - tekst wychodzi poza okno): w ReMoM
+    # napis ma w sobie komentarz z deasemblacji.
+    zamien("MoM/src/Surveyor.c",
+           "char str_Nightshade__ovr094[] = \"Nightshade',0 ; should use dseg:2\";",
+           "char str_Nightshade__ovr094[] = \"Nightshade\";  /* AMIGA: bylo \"Nightshade',0 ; should use dseg:2\" */", ile=1)
 
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",

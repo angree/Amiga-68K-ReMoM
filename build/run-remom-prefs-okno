@@ -1,0 +1,11 @@
+; run-remom-prefs-okno - okno remom-prefs (0.4.4: opcja Preload) -> Work:prefs-okno.ppm
+FailAt 1000000
+Stack 1000000
+CD Work:
+Delete >NIL: Work:reset.flag
+Run >NIL: Work:straznik
+LoadWB
+Delete >NIL: Work:mom.done Work:prefs-okno.ppm
+remom-prefs TESTWINDOW >Work:mom.log
+Set PRC $RC
+Echo >Work:mom.done "rc=$PRC"

@@ -1,0 +1,38 @@
+# autoinput-muzyka.txt - wczytanie zapisu i ekrany z doczytywaniem LBX (cięcie muzyki AdLib na zywo)
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 12000
+snap mz-mapa
+click 160 8
+wait 5000
+click 100 30
+wait 6000
+snap mz-miasto
+key esc
+wait 4000
+key esc
+wait 4000
+click 113 8
+wait 5000
+key esc
+wait 4000
+click 68 8
+wait 6000
+snap mz-ksiega
+key esc
+wait 4000
+click 160 8
+wait 5000
+click 100 30
+wait 6000
+key esc
+wait 4000
+key esc
+wait 4000
+snap mz-koniec
+wait 1000
+quit

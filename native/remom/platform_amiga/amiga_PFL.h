@@ -44,6 +44,8 @@ extern int amiga_opt_pasek;    /* 1 = pasek tytulowy ekranu */
 extern int amiga_opt_wideo;    /* 0 auto, 1 PAL, 2 NTSC */
 extern int amiga_opt_grafika;  /* 0 jak binarka, 1 AGA, 2 RTG, 3 okno */
 extern int amiga_opt_muzyka;   /* 1 = muzyka */
+extern int amiga_opt_preload;  /* 1 = LBX w RAM: (amiga_Preload.c) */
+void Amiga_Preload_Start(void);
 extern int amiga_opt_fps;      /* 1 = fps i czas klatki na pasku ekranu */
 void Amiga_Opcje_Wczytaj(void);
 void Amiga_Opcje_Ekran(void);

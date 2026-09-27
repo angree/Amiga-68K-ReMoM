@@ -217,10 +217,10 @@ sh "$WORK/buildscripts/cc-one.sh" "$SRC" "src/ReMoM.c" "$OBJ"
 # amiga_Req.c ciagnie naglowki systemu - bez wymuszonego amiga_le.h;
 # amiga_gfx.c to warstwa z portu OpenXcom.
 export CC_FLAGS="$NATIVE_FLAGS"
-for f in remom/platform_amiga/amiga_Req.c amiga_gfx.c amiga_audio.c amiga_adpcm.c amiga_camd.c remom/muzyka_konw.c remom/platform_amiga/amiga_Domyslny_aga.c; do
+for f in remom/platform_amiga/amiga_Req.c remom/platform_amiga/amiga_Preload.c amiga_gfx.c amiga_audio.c amiga_adpcm.c amiga_camd.c remom/muzyka_konw.c remom/platform_amiga/amiga_Domyslny_aga.c; do
 	sh "$WORK/buildscripts/cc-one.sh" "$NATIVE" "$f" "$OBJ"
 done
-REMOM_BACKEND="$REMOM_BACKEND $OBJ/remom_platform_amiga_amiga_Req.c.o $OBJ/amiga_gfx.c.o $OBJ/amiga_audio.c.o $OBJ/amiga_adpcm.c.o $OBJ/amiga_camd.c.o $OBJ/remom_muzyka_konw.c.o $WORK/xmid-amiga.o"
+REMOM_BACKEND="$REMOM_BACKEND $OBJ/remom_platform_amiga_amiga_Req.c.o $OBJ/remom_platform_amiga_amiga_Preload.c.o $OBJ/amiga_gfx.c.o $OBJ/amiga_audio.c.o $OBJ/amiga_adpcm.c.o $OBJ/amiga_camd.c.o $OBJ/remom_muzyka_konw.c.o $WORK/xmid-amiga.o"
 # MIDI przez camd.library (native/amiga_camd.c z portu OpenTTD) + konwerter
 # XMIDI ReMoM wyciety mechanicznie (build/xmi2mid-gen.py ... biblioteka) - 0.3.0
 python3 "$WORK/buildscripts/xmi2mid-gen.py" "$WORK/stage/ReMoM" "$WORK/xmid-amiga.c" biblioteka >/dev/null
@@ -282,6 +282,11 @@ ls -la "$WORK/hemom"
 m68k-amigaos-gcc $NATIVE_FLAGS -O2 -o "$WORK/straznik" "$NATIVE/remom/straznik.c" 2>"$WORK/warn/straznik.txt" || {
 	log "BLAD KOMPILACJI: straznik.c"; cat "$WORK/warn/straznik.txt"; exit 1; }
 cmp -s "$WORK/straznik" "$DEPLOY/straznik" || cp "$WORK/straznik" "$DEPLOY/straznik"
+# Zjadacz FastRAM (native/remom/zjadacz.c, 0.4.4): test "maszyna z 8 MB" bez
+# zmiany konfiguracji emulatora - build/run-remom-8mb.
+m68k-amigaos-gcc $NATIVE_FLAGS -O2 -o "$WORK/zjadacz" "$NATIVE/remom/zjadacz.c" 2>"$WORK/warn/zjadacz.txt" || {
+	log "BLAD KOMPILACJI: zjadacz.c"; cat "$WORK/warn/zjadacz.txt"; exit 1; }
+cmp -s "$WORK/zjadacz" "$DEPLOY/zjadacz" || cp "$WORK/zjadacz" "$DEPLOY/zjadacz"
 # wbstart (native/remom/wbstart.c): test startu z ikony bez myszy
 m68k-amigaos-gcc $NATIVE_FLAGS -O2 -o "$WORK/wbstart" "$NATIVE/remom/wbstart.c" 2>"$WORK/warn/wbstart.txt" || {
 	log "BLAD KOMPILACJI: wbstart.c"; cat "$WORK/warn/wbstart.txt"; exit 1; }

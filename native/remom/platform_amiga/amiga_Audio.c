@@ -167,7 +167,7 @@ void Amiga_Audio_Service(void)
 static void Amiga_Audio_Zamknij(void)
 {
     int ch;
-    printf("[amiga] muzyka: serwis wolany %lu razy\n", amiga_audio_serwis_licznik);
+    printf("[amiga] muzyka: serwis wolany %lu razy, pusta kolejka %lu razy\n", amiga_audio_serwis_licznik, AmigaAudio_MusicUnderruns());
     fflush(stdout);
     Amiga_Muzyka_Stop();
     AmigaAudio_Close();
@@ -187,6 +187,18 @@ static int Amiga_Audio_Gotowe(void)
         if(amiga_audio_stan == 1)
         {
             atexit(Amiga_Audio_Zamknij);
+            /* 0.4.4: muzyke dolewa osobny proces, priorytet gra+1 - nie tnie sie przy wczytywaniu */
+            {
+                const char * w = getenv("REMOM_WATEK");   /* Set REMOM_WATEK 0 - porownanie ze stara droga (test) */
+                if(w != NULL && w[0] == '0')
+                {
+                    printf("[amiga] muzyka: osobny proces wylaczony (REMOM_WATEK 0)\n");
+                }
+                else
+                {
+                    printf("[amiga] muzyka: osobny proces %s\n", AmigaAudio_MusicThreadStart(1) ? "dziala" : "NIE ruszyl - dolewa petla gry");
+                }
+            }
         }
         printf("[amiga] audio.device: %s\n", (amiga_audio_stan == 1) ? "4 kanaly Pauli" : "niedostepne - gra bez dzwieku");
         fflush(stdout);
@@ -320,7 +332,7 @@ static int16_t Amiga_Audio_VOC(const uint8_t * p, uint32_t rozmiar)
    Synteza z native/remom/muzyka_konw.c liczona w trakcie gry i wlewana do
    buforow Pauli (kanaly 2 i 3, jak pliki). Dla szybkich CPU (68060): na 68030
    zjada kilkadziesiat procent. Brak FAT.AD -> muzyka z plikow. */
-#define AMIGA_ADLIB_CHUNK 2048
+#define AMIGA_ADLIB_CHUNK 4096   /* 0.4.4: bylo 2048 - 8 buforow = ~3 s przy 11 kHz */
 static int amiga_adlib_zgloszone = 0;
 
 static int Amiga_AdLib_Refill(void * ud, signed char * dst, int max)

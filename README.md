@@ -17,7 +17,8 @@ copy of Master of Magic. The GOG version works (see below).
 - A 68020 or better, no FPU needed. **A 68030 at 50 MHz is recommended.**
 - AGA, or an RTG card with an 8-bit screen mode (CyberGraphX or Picasso96)
 - Kickstart and Workbench 3.1 or newer
-- 8 MB of Fast RAM, plus 2 MB of Chip RAM on AGA
+- 8 MB of Fast RAM, plus 2 MB of Chip RAM on AGA (16 MB recommended: with
+  8 MB a very long game can run out of memory)
 - A hard disk with about 25 MB free for the game data, about 60 MB with
   11 kHz music or about 100 MB with 22 kHz music
 
@@ -98,9 +99,10 @@ RATE=22050 DANE=/path/to/your/LBX/files sh build/muzyka-host.sh
 
 `remom-prefs` is a small Workbench program for the settings: graphics (AGA or
 RTG), video mode (Auto, PAL or NTSC), screen title bar, FPS on the bar, system
-pointer, music (off, files, MIDI or AdLib live), music quality, synthesiser
-and *Console* (a window with the game's text output when started from the
-icon; off by default). It also converts and deletes the music. The other
+pointer, music (off, files, MIDI or AdLib live), music quality, synthesiser,
+*Console* (a window with the game's text output when started from the
+icon; off by default) and *Preload* (copies the game data, 17 MB, to RAM: at
+start for faster loading; needs about 33 MB of free Fast RAM, off by default). It also converts and deletes the music. The other
 options are also in the game's main menu under **Amiga Options**. Settings are saved to `amiga.cfg`.
 
 ## Building from source

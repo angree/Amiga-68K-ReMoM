@@ -1,0 +1,23 @@
+# autoinput-info.txt - zapis gracza (Nightshade obok miasta): Surveyor na Nightshade, Cartographer
+wait 4000
+type c
+wait 10000
+click 248 8
+wait 3000
+click 150 45
+wait 4000
+click 150 137
+wait 3000
+snap in-surveyor
+click 130 119
+wait 3000
+snap in-surveyor2
+key esc
+wait 3000
+click 248 8
+wait 3000
+click 150 59
+wait 5000
+snap in-kartograf
+wait 1000
+quit

@@ -70,7 +70,7 @@
 #define AMIGA_CURSOR_DIM   16      /* MOM_DEF.h CURSOR_WIDTH / CURSOR_HEIGHT */
 #define AMIGA_WARP_GUARD_MS 100    /* jak Platform_Set_Warp_Guard() w SDL2 */
 
-#define AMIGA_TYTUL "Master of Magic 0.4.3"   /* pasek ekranu i okno; wersja portu (developer 2026-09-24) */
+#define AMIGA_TYTUL "Master of Magic 0.5.0"   /* pasek ekranu i okno; wersja portu (developer 2026-09-24) */
 
 #define AMIGA_GFX_DEFAULT  (-2)
 #define AMIGA_GFX_NONE     (-1)
@@ -342,6 +342,7 @@ void Startup_Platform(void)
     int rc;
 
     Amiga_Opcje_Wczytaj();   /* przed wyborem ekranu - gfx= z amiga.cfg */
+    Amiga_Preload_Start();   /* preload=1: LBX do RAM: (0.4.4) */
     backend = Amiga_Choose_Backend();
 
     Amiga_Keyboard_Init();

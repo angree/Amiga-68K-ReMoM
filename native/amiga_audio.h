@@ -96,6 +96,12 @@ int  AmigaAudio_MusicActive(void);
  * buffer out (so the caller can loop or advance to the next track). */
 int  AmigaAudio_MusicFinished(void);
 
+/* Ami MoM 0.4.4: osobny proces dolewajacy muzyke (priorytet = gra + pri).
+ * 1 = dziala. Stop czeka na koniec procesu; AmigaAudio_Close wola go sam. */
+int  AmigaAudio_MusicThreadStart(int pri_wzgledem_gry);
+void AmigaAudio_MusicThreadStop(void);
+unsigned long AmigaAudio_MusicUnderruns(void);   /* ile razy kolejka muzyki byla pusta */
+
 #ifdef __cplusplus
 }
 #endif

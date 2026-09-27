@@ -22,6 +22,7 @@
  *   cursor=0|1   1 = wskaznik systemowy zamiast kursora gry
  *   music=0|1    muzyka
  *   musicrate=0|1  jakosc konwersji muzyki: 11025 / 22050 Hz (gra czyta Hz z WAV)
+ *   preload=0|1    LBX kopiowane przy starcie gry do RAM: (platform_amiga/amiga_Preload.c)
  *
  * "Convert music" (i CONVERT w Shellu): muzyka z MUSIC.LBX gracza do muzyka/
  * na tej Amidze - native/remom/muzyka_konw.c (2026-09-24: gracze nie mieli
@@ -52,7 +53,7 @@
 #include "muzyka_konw.h"
 
 static const char verstag[] __attribute__((used)) =
-    "$VER: remom-prefs 0.4.3 (26.09.2026)";
+    "$VER: remom-prefs 0.5.0 (27.09.2026)";
 
 #define PLIK "PROGDIR:amiga.cfg"
 
@@ -62,7 +63,7 @@ struct Library *GadToolsBase = NULL;
 /*  Ustawienia                                                              */
 /* ------------------------------------------------------------------------ */
 
-enum { O_GFX, O_VIDEO, O_BAR, O_FPS, O_CURSOR, O_MUSIC, O_MRATE, O_SYNTH, O_CONSOLE, O_COUNT };
+enum { O_GFX, O_VIDEO, O_BAR, O_FPS, O_CURSOR, O_MUSIC, O_MRATE, O_SYNTH, O_CONSOLE, O_PRELOAD, O_COUNT };
 
 typedef struct
 {
@@ -118,6 +119,10 @@ static const opcja_t OPCJE[O_COUNT] = {
       { "Off", "On", NULL, NULL, NULL },
       { "No text window when started from the icon (log: mom-wb.log).",
         "Show the game's text output in a window when started from the icon.", NULL, NULL }, 0 },
+    { "preload", "Preload:", "PRELOAD", 'L', 2,
+      { "Off", "On", NULL, NULL, NULL },
+      { "Game data is read from disk when needed.",
+        "Copy game data (17 MB, not music) to RAM at start. Needs 33 MB free FastRAM.", NULL, NULL }, 0 },
 };
 
 static int wart[O_COUNT];
@@ -191,12 +196,12 @@ static void opis_maszyny(char *dst, int cap)
 /*  Okno                                                                     */
 /* ------------------------------------------------------------------------ */
 
-#define GID_OPCJA 10      /* 10..14 cykle, 20..24 podpowiedzi */
+#define GID_OPCJA 10      /* 10..19 cykle, 20..29 podpowiedzi */
 #define GID_PODP  20
 #define GID_SAVE  30
 #define GID_CANCEL 31
 
-#define KLAWISZE "Keys: G V B F P M R Y O change  C convert  D delete  S save"
+#define KLAWISZE "Keys: G V B F P M R Y O L change  C convert  D delete  S save"
 #define GID_KONW 32
 #define GID_KASUJ 33
 #define GID_STATUS 42

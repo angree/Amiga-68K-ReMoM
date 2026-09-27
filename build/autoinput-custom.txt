@@ -1,0 +1,24 @@
+# autoinput-custom.txt - Custom wizard: portret, imie, ksiegi/zdolnosci, rasa, sztandar
+wait 4000
+click 160 155
+wait 3000
+click 283 186
+wait 3000
+click 271 189
+wait 3000
+snap cu-portret
+click 180 40
+wait 3000
+snap cu-imie
+key return
+wait 3000
+snap cu-ksiegi
+click 30 150
+wait 1500
+click 36 150
+wait 1500
+click 200 60
+wait 2000
+snap cu-ksiegi2
+wait 1000
+quit

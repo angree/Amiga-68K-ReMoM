@@ -29,6 +29,9 @@
 #include <exec/memory.h>
 #include <exec/io.h>
 #include <devices/audio.h>
+#include <exec/semaphores.h>
+#include <dos/dostags.h>
+#include <proto/dos.h>
 
 #include "amiga_audio.h"
 
@@ -69,6 +72,23 @@ static void *aa_mus_ud = NULL;
 /* Logical music channel 0 -> Paula ch3 (LEFT), 1 -> ch2 (RIGHT); two
  * one request per queued buffer, so audio.device chains them gaplessly. */
 static const int aa_mus_chan[2] = { 3, 2 };
+
+/* Ami MoM 0.4.4: muzyke dolewa osobny proces o wyzszym priorytecie niz gra
+ * (gracz: AdLib na zywo tnie sie przy wczytywaniu - glowna petla wtedy nie
+ * wola MusicService). Wszystkie funkcje Music* biora ten semafor; proces
+ * co tik (Delay(1) = 20 ms) wola MusicService. Koniec procesu: CTRL_F
+ * (CTRL_C sprawdza __chkabort libnix - nie wolno go uzywac). */
+static struct SignalSemaphore aa_mus_sem;
+static int aa_mus_sem_ok = 0;
+static struct Task *aa_thr_rodzic = NULL;
+static volatile int aa_thr_zyje = 0;
+static struct Task *aa_thr_task = NULL;
+static void MusLock(void)
+{
+    if (!aa_mus_sem_ok) { InitSemaphore(&aa_mus_sem); aa_mus_sem_ok = 1; }
+    ObtainSemaphore(&aa_mus_sem);
+}
+static void MusUnlock(void) { ReleaseSemaphore(&aa_mus_sem); }
 static struct IOAudio *aa_mus_req[2][AA_MUS_BUFS];
 static int   aa_mus_busy[2][AA_MUS_BUFS];
 
@@ -127,6 +147,8 @@ void AmigaAudio_Close(void)
     int i;
 
     aa_ready = 0;
+
+    AmigaAudio_MusicThreadStop();
 
     /* Stop music first: aborts channels 2 & 3 and frees their buffers. */
     AmigaAudio_MusicStop();
@@ -283,7 +305,7 @@ static void MusFreeReqs(void)
     }
 }
 
-void AmigaAudio_MusicStop(void)
+static void MusStopL(void)
 {
     int b;
     if (aa_mus_req[0][0] != NULL || aa_mus_active) MusFreeReqs();
@@ -298,13 +320,13 @@ void AmigaAudio_MusicStop(void)
     aa_mus_ud     = NULL;
 }
 
-int AmigaAudio_MusicStart(int period, int chunk_samples,
+static int MusStartL(int period, int chunk_samples,
                           int (*refill)(void *, signed char *, int), void *ud)
 {
     int mc, p, b, primed;
     if (!aa_ready || refill == NULL) return 0;
 
-    AmigaAudio_MusicStop();
+    MusStopL();
 
     if (chunk_samples < 512) chunk_samples = 512;
     if (chunk_samples > AA_MUS_MAX_CHUNK) chunk_samples = AA_MUS_MAX_CHUNK;
@@ -332,7 +354,7 @@ int AmigaAudio_MusicStart(int period, int chunk_samples,
     /* One byte per 8-bit sample; the two channels share these buffers. */
     for (b = 0; b < AA_MUS_BUFS; b++) {
         aa_mus_buf[b] = (signed char *)AllocVec((ULONG)chunk_samples, MEMF_CHIP);
-        if (aa_mus_buf[b] == NULL) { AmigaAudio_MusicStop(); return 0; }
+        if (aa_mus_buf[b] == NULL) { MusStopL(); return 0; }
         aa_mus_len[b] = 0;
     }
 
@@ -342,7 +364,7 @@ int AmigaAudio_MusicStart(int period, int chunk_samples,
         for (p = 0; p < AA_MUS_BUFS; p++) {
             struct IOAudio *io = (struct IOAudio *)AllocVec(sizeof(struct IOAudio),
                                                             MEMF_PUBLIC | MEMF_CLEAR);
-            if (io == NULL) { AmigaAudio_MusicStop(); return 0; }
+            if (io == NULL) { MusStopL(); return 0; }
             *io = *aa_opener;
             io->ioa_Request.io_Unit = (struct Unit *)(1UL << aa_mus_chan[mc]);
             aa_mus_req[mc][p] = io;
@@ -353,13 +375,15 @@ int AmigaAudio_MusicStart(int period, int chunk_samples,
     /* Fill the whole queue before starting DMA: the first seconds of a
      * tune are exactly when the game is busiest changing state. */
     primed = 0;
-    for (b = 0; b < AA_MUS_BUFS; b++) {
+    /* Ami MoM 0.4.4: przy dzialajacym procesie muzyki tylko 2 bufory na start
+     * (reszte dolewa proces) - zmiana utworu nie zatrzymuje gry na dlugo */
+    for (b = 0; b < (aa_thr_zyje ? 2 : AA_MUS_BUFS); b++) {
         int n = refill(ud, aa_mus_buf[b], chunk_samples);
         if (n <= 0) { aa_mus_len[b] = 0; aa_mus_ended = 1; break; }
         aa_mus_len[b] = n & ~1;
         primed++;
     }
-    if (primed == 0) { AmigaAudio_MusicStop(); return 0; }   /* nothing to play */
+    if (primed == 0) { MusStopL(); return 0; }   /* nothing to play */
 
     aa_mus_active = 1;
     aa_mus_next = primed % AA_MUS_BUFS;
@@ -368,10 +392,20 @@ int AmigaAudio_MusicStart(int period, int chunk_samples,
     return 1;
 }
 
-void AmigaAudio_MusicService(void)
+static unsigned long aa_mus_glod = 0;   /* 0.4.4: ile razy kolejka byla pusta (slychac przerwe) */
+unsigned long AmigaAudio_MusicUnderruns(void) { return aa_mus_glod; }
+
+static void MusServiceL(void)
 {
     int pass, mc;
     if (!aa_mus_active) return;
+    if (!aa_mus_ended) {
+        int b2, gra = 0;
+        for (b2 = 0; b2 < AA_MUS_BUFS && !gra; b2++)
+            for (mc = 0; mc < 2; mc++)
+                if (aa_mus_busy[mc][b2] && CheckIO((struct IORequest *)aa_mus_req[mc][b2]) == NULL) gra = 1;
+        if (!gra) aa_mus_glod++;
+    }
 
     /* Reap whatever finished, then refill in queue order. At most a few
      * buffers per call: mixing is expensive and doing the whole ring in one
@@ -410,7 +444,7 @@ void AmigaAudio_MusicSetVolume(int volume)
 
 int AmigaAudio_MusicActive(void) { return aa_mus_active; }
 
-int AmigaAudio_MusicFinished(void)
+static int MusFinishedL(void)
 {
     int mc, p;
     if (!aa_mus_active) return 1;
@@ -430,4 +464,64 @@ int AmigaAudio_MusicFinished(void)
         for (p = 0; p < AA_MUS_BUFS; p++)
             if (aa_mus_busy[mc][p]) return 0;
     return 1;
+}
+
+/* ---- publiczne wejscia pod semaforem (Ami MoM 0.4.4) ---- */
+void AmigaAudio_MusicStop(void) { MusLock(); MusStopL(); MusUnlock(); }
+
+int AmigaAudio_MusicStart(int period, int chunk_samples,
+                          int (*refill)(void *, signed char *, int), void *ud)
+{
+    int r;
+    MusLock(); r = MusStartL(period, chunk_samples, refill, ud); MusUnlock();
+    return r;
+}
+
+void AmigaAudio_MusicService(void) { MusLock(); MusServiceL(); MusUnlock(); }
+
+int AmigaAudio_MusicFinished(void)
+{
+    int r;
+    MusLock(); r = MusFinishedL(); MusUnlock();
+    return r;
+}
+
+static void MusThread(void)
+{
+    while (!(SetSignal(0, 0) & SIGBREAKF_CTRL_F)) {
+        MusLock();
+        MusServiceL();
+        MusUnlock();
+        Delay(1);
+    }
+    /* Forbid trwa do konca procesu - rodzic nie zwolni kodu przed nami */
+    Forbid();
+    aa_thr_zyje = 0;
+    Signal(aa_thr_rodzic, SIGBREAKF_CTRL_F);
+}
+
+int AmigaAudio_MusicThreadStart(int pri_wzgledem_gry)
+{
+    struct Process *pr;
+    if (aa_thr_zyje) return 1;
+    if (!aa_mus_sem_ok) { InitSemaphore(&aa_mus_sem); aa_mus_sem_ok = 1; }
+    aa_thr_rodzic = FindTask(NULL);
+    SetSignal(0, SIGBREAKF_CTRL_F);
+    aa_thr_zyje = 1;
+    pr = CreateNewProcTags(NP_Entry, (ULONG)MusThread,
+                           NP_Name, (ULONG)"Master of Magic music",
+                           NP_Priority, (LONG)(aa_thr_rodzic->tc_Node.ln_Pri + pri_wzgledem_gry),
+                           NP_StackSize, 32768UL,
+                           TAG_DONE);
+    if (pr == NULL) { aa_thr_zyje = 0; return 0; }
+    aa_thr_task = (struct Task *)pr;
+    return 1;
+}
+
+void AmigaAudio_MusicThreadStop(void)
+{
+    if (!aa_thr_zyje) return;
+    Signal(aa_thr_task, SIGBREAKF_CTRL_F);
+    while (aa_thr_zyje) Wait(SIGBREAKF_CTRL_F);
+    SetSignal(0, SIGBREAKF_CTRL_F);
 }
