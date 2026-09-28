@@ -1,0 +1,16 @@
+# autoinput-kartograf.txt - SAVE2.TST: Info > Cartographer (miasta i jednostki na tle terenu)
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+snap ka-mapa
+click 248 8
+wait 3000
+click 150 59
+wait 6000
+snap ka-kartograf
+wait 1000
+quit

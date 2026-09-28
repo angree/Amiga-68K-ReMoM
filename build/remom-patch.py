@@ -1184,6 +1184,16 @@ def latki_menu_amigi():
            "char str_Nightshade__ovr094[] = \"Nightshade',0 ; should use dseg:2\";",
            "char str_Nightshade__ovr094[] = \"Nightshade\";  /* AMIGA: bylo \"Nightshade',0 ; should use dseg:2\" */", ile=1)
 
+    # 0.5.1 (gracz: Cartographer - miasta i jednostki przesuniete wzgledem mapy):
+    # w ReMoM y jednostek i miast liczone od m_cartograph_x (16) zamiast
+    # m_cartograph_y (27) - 11 pikseli za wysoko. Wezly, lokacje i wieze maja _y.
+    zamien("MoM/src/AdvsrScr.c",
+           "                y = (m_cartograph_x + (_UNITS[itr_units].wy * 4) + 1);",
+           "                y = (m_cartograph_y + (_UNITS[itr_units].wy * 4) + 1);  /* AMIGA: bylo m_cartograph_x */", ile=1)
+    zamien("MoM/src/AdvsrScr.c",
+           "                y = (m_cartograph_x + (_CITIES[itr_cities].wy * 4));",
+           "                y = (m_cartograph_y + (_CITIES[itr_cities].wy * 4));  /* AMIGA: bylo m_cartograph_x */", ile=1)
+
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
            "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",
