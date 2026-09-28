@@ -1194,6 +1194,56 @@ def latki_menu_amigi():
            "                y = (m_cartograph_x + (_CITIES[itr_cities].wy * 4));",
            "                y = (m_cartograph_y + (_CITIES[itr_cities].wy * 4));  /* AMIGA: bylo m_cartograph_x */", ile=1)
 
+    # 0.5.2 test (gracz: okienko "zbudowano budynek" przesuniete w prawo i
+    # zawiniete na lewa krawedz): Set REMOM_TEST_BUDYNEK <nr budynku> - po
+    # wejsciu na mape gra raz pokazuje komunikat o ukonczeniu budowy w miescie 0
+    # (ta sama funkcja co w NEXTTURN.c). Bez zmiennej nic sie nie dzieje.
+    zamien("MoM/src/MainScr.c",
+           "    leave_screen_flag = ST_FALSE;\n    while(leave_screen_flag == ST_FALSE)\n",
+           "    { /* AMIGA: test okienka Notify2 */\n"
+           "        extern void City_Built_Building_Message(int16_t x, int16_t y, int16_t city_idx, int16_t bldg_idx);\n"
+           "        static int amiga_test_budynek = -1;\n"
+           "        if(amiga_test_budynek < 0)\n"
+           "        {\n"
+           "            const char * amiga_e = getenv(\"REMOM_TEST_BUDYNEK\");\n"
+           "            amiga_test_budynek = (amiga_e != NULL) ? atoi(amiga_e) : 0;\n"
+           "            if(amiga_test_budynek > 0 && _cities > 0)\n"
+           "            {\n"
+           "                _city_idx = 0;\n"
+           "                city_built_bldg_idx = (int16_t)amiga_test_budynek;\n"
+           "                City_Built_Building_Message(5, 101, 0, (int16_t)amiga_test_budynek);\n"
+           "            }\n"
+           "        }\n"
+           "    }\n"
+           "    leave_screen_flag = ST_FALSE;\n    while(leave_screen_flag == ST_FALSE)\n", ile=1)
+
+    # 0.5.2 (gracz: okienko np. o ukonczeniu budowy przesuniete w prawo, 2-3 px
+    # zawijaja sie na lewa krawedz): Notify2 stawia ramke obrazka zaraz za
+    # tekstem; przy maskotce Chaosu (x1 = -22) i tekscie na pelna szerokosc
+    # prawa krawedz wychodzi za 319, a FLIC_Draw nie przycina - zawija.
+    # Tu: gdy wychodzi, cale okienko przesuwa sie w lewo o nadmiar.
+    # Set REMOM_TEST_MAGIA 0..4 wymusza maskotke (test najgorszego przypadku).
+    zamien("MoX/src/GENDRAW.c",
+           "        message_box_x = 6;\n    }\n\n    message_box_y = box_top_y;\n\n    Assign_Auto_Function(Notify2_Draw, 1);",
+           "        message_box_x = 6;\n    }\n"
+           "    { /* AMIGA 0.5.2: okienko nie moze wyjsc za prawa krawedz */\n"
+           "        const char * amiga_e = getenv(\"REMOM_TEST_MAGIA\");\n"
+           "        int16_t amiga_w, amiga_x2;\n"
+           "        if(amiga_e != NULL && amiga_e[0] >= '0' && amiga_e[0] <= '4')\n"
+           "        {\n"
+           "            notify_magic_idx = (int16_t)(amiga_e[0] - '0');\n"
+           "            message_box_x = (notify2_mascot_x1[notify_magic_idx] < 0) ? (int16_t)(6 - notify2_mascot_x1[notify_magic_idx]) : 6;\n"
+           "        }\n"
+           "        amiga_w = FLIC_Get_Width((box_border != ST_FALSE) ? notify_gem_box_seg[type] : notify_pict_box_seg[type]);\n"
+           "        amiga_x2 = (int16_t)(notify2_text_x1[notify_magic_idx] + message_box_x + UU_max_para_width + 1 + amiga_w);\n"
+           "        printf(\"[amiga] Notify2: magia %d, tekst %d px, ramka %d px, prawa krawedz %d\\n\", (int)notify_magic_idx, (int)UU_max_para_width, (int)amiga_w, (int)amiga_x2);\n"
+           "        if(amiga_x2 > SCREEN_XMAX)\n"
+           "        {\n"
+           "            message_box_x = (int16_t)(message_box_x - (amiga_x2 - SCREEN_XMAX));\n"
+           "        }\n"
+           "    }\n"
+           "\n    message_box_y = box_top_y;\n\n    Assign_Auto_Function(Notify2_Draw, 1);", ile=1)
+
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
            "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",

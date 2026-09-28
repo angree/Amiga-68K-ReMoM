@@ -1,0 +1,11 @@
+# autoinput-jingiel.txt - okienko budynku z melodia, 25 s czekania na koniec melodii
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 25000
+key return
+wait 3000
+quit

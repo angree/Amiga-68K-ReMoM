@@ -1,0 +1,14 @@
+# autoinput-budynek.txt - SAVE2.TST, okienko o ukonczeniu budowy (REMOM_TEST_BUDYNEK)
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 12000
+snap bu-okno
+key return
+wait 3000
+snap bu-po
+wait 1000
+quit

@@ -167,6 +167,7 @@ struct konw
     uint32_t wiek;
     uint32_t midi_dl;          /* na zywo: do zapetlenia */
     int petla;
+    int zywo_koniec;           /* 0.5.2: utwor bez petli wygasl - Konw_Graj zwraca 0 */
 };
 
 static void adl_nuta_on(konw_t * k, int ch, int nuta, int vel);
@@ -1051,10 +1052,17 @@ konw_t * Konw_Na_Zywo(long rate, const uint8_t * we, uint32_t dl, char * blad, i
 }
 
 /* max probek 8 bit do dst; mniej = koniec utworu bez petli */
+int Konw_Petla(konw_t * k) { return k->petla; }
+
 int Konw_Graj(konw_t * k, signed char * dst, int max)
 {
     int16_t tmp[CTRL];
     int zrobione = 0, i;
+    /* 0.5.2: po wygasnieciu ogona utworu bez petli juz nic - wczesniej kazde
+       wywolanie oddawalo jeszcze jeden maly kawalek (CTRL probek) i strumien
+       nigdy sie nie konczyl: Paula grala krotkie bufory z przerwami = trzaski
+       (gracz: muzyka po melodii nowego czaru) */
+    if (k->zywo_koniec) return 0;
     while (zrobione < max) {
         int n = max - zrobione, grane = 1, akt, trwa;
         if (n > CTRL) n = CTRL;
@@ -1073,8 +1081,10 @@ int Konw_Graj(konw_t * k, signed char * dst, int max)
         if (!trwa) {
             if (k->petla) { zywo_od_poczatku(k); continue; }
             k->ogon += (uint32_t)n;
-            if (k->ogon >= (uint32_t)(k->rate * OGON_SEK) || (akt == 0 && k->ogon > (uint32_t)(k->rate / 4)))
+            if (k->ogon >= (uint32_t)(k->rate * OGON_SEK) || (akt == 0 && k->ogon > (uint32_t)(k->rate / 4))) {
+                k->zywo_koniec = 1;
                 break;
+            }
         }
     }
     return zrobione;

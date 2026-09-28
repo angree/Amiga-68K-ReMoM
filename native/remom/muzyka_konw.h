@@ -24,6 +24,7 @@ int Konw_Krok(konw_t * k, char * status, int cap);
 /* AdLib na zywo (gra, music=3): utwor XMIDI z LBX (caly wpis), FAT.AD z katalogu biezacego */
 konw_t * Konw_Na_Zywo(long rate, const uint8_t * we, uint32_t dl, char * blad, int cap);
 /* max probek 8 bit ze znakiem; mniej niz max = koniec utworu bez petli */
+int Konw_Petla(konw_t * k);   /* 1 = utwor z petla (znacznik w XMI) */
 int Konw_Graj(konw_t * k, signed char * dst, int max);
 
 int Konw_Zrobione(konw_t * k);   /* ile plikow zapisano */

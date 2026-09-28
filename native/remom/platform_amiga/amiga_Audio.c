@@ -159,6 +159,8 @@ void Amiga_Audio_Service(void)
         if(AmigaAudio_MusicFinished())
         {
             /* utwor bez petli dograny - kanaly 2 i 3 wracaja do efektow */
+            printf("[amiga] muzyka: utwor bez petli skonczony\n");
+            fflush(stdout);
             Amiga_Muzyka_Stop();
         }
     }
