@@ -1244,6 +1244,39 @@ def latki_menu_amigi():
            "    }\n"
            "\n    message_box_y = box_top_y;\n\n    Assign_Auto_Function(Notify2_Draw, 1);", ile=1)
 
+    # 0.5.3 (gracz: imie czarodzieja przy wyborze rasy/sztandaru "zlewa sie",
+    # brak cienia na dole): ReMoM po narysowaniu tekstu w (77,119) rysuje go
+    # jeszcze raz w (77,120) kolorem tekstu - przykrywa jasny cien pod literami.
+    # Pozostale ekrany (NewGame.c) tej linii nie maja - blad przepisania.
+    zamien("MoM/src/NewGame.c",
+           "    Set_Font_Colors_15(4, &text_colors[0]);\n    Print_Centered(77, 119, _players[0].name);\n    Print_Centered(77, 120, _players[0].name);\n",
+           "    Set_Font_Colors_15(4, &text_colors[0]);\n    Print_Centered(77, 119, _players[0].name);\n    /* AMIGA: bylo jeszcze Print_Centered(77, 120, ...) - przykrywalo cien */\n", ile=1)
+
+    # 0.5.3 (gracz: po Build dla Settlers przycisk "BUILD" zostaje na Next Turn):
+    # Add_Unit_Action_Fields dodaje pole przycisku specjalnego (z obrazkiem),
+    # gdy special_action_flag != -1, takze przy pustym stosie. Po zalozeniu
+    # miasta flaga zostaje z Settlers; ReMoM zeruje tylko zmienna _special_button,
+    # a pole zostaje na liscie i Draw_Fields rysuje "BUILD" na Next Turn.
+    zamien("MoM/src/MainScr.c",
+           "    if(special_action_flag != ST_UNDEFINED)\n    {\n        if(special_action_flag == 2)\n        {\n            _special_button = Add_Button_Field(280, 186, \"\", main_purify_button, 0, ST_UNDEFINED);\n",
+           "    if((special_action_flag != ST_UNDEFINED) && (_unit_stack_count > 0))  /* AMIGA: bez stosu przycisk zostawal na Next Turn */\n    {\n        if(special_action_flag == 2)\n        {\n            _special_button = Add_Button_Field(280, 186, \"\", main_purify_button, 0, ST_UNDEFINED);\n", ile=1)
+
+    # 0.5.3 (gracz: latajace jednostki, np. Guardian Spirit, nie wchodza na
+    # wode): Army_Movement_Modes kopiowal memcpy tablice trybow ruchu ze
+    # struktury s_Movement_Modes (w porcie little-endian) do lokalnej tablicy
+    # int16_t (natywnej) - bajty zamienione: FLYING 0x0008 -> 0x0800. Zaden
+    # tryb (latanie, plywanie, zegluga, las, gory) nie byl rozpoznawany.
+    zamien("MoM/src/UnitMove.c",
+           "    memcpy(l_movement_modes_array, &movement_modes_array, 12);\n",
+           "    /* AMIGA: bylo memcpy ze struktury LE do tablicy natywnej - bajty zamienione */\n"
+           "    l_movement_modes_array[0] = (int16_t)movement_modes_array.Cavalry;\n"
+           "    l_movement_modes_array[1] = (int16_t)movement_modes_array.Forester;\n"
+           "    l_movement_modes_array[2] = (int16_t)movement_modes_array.Mountaineer;\n"
+           "    l_movement_modes_array[3] = (int16_t)movement_modes_array.Swimming;\n"
+           "    l_movement_modes_array[4] = (int16_t)movement_modes_array.Sailing;\n"
+           "    l_movement_modes_array[5] = (int16_t)movement_modes_array.Flying;\n"
+           "    { static int amiga_raz = 0; if(!amiga_raz) { amiga_raz = 1; printf(\"[amiga] tryby ruchu: %04x %04x %04x %04x %04x %04x (ma byc 0001 0020 0040 0004 0002 0008)\\n\", (unsigned)l_movement_modes_array[0], (unsigned)l_movement_modes_array[1], (unsigned)l_movement_modes_array[2], (unsigned)l_movement_modes_array[3], (unsigned)l_movement_modes_array[4], (unsigned)l_movement_modes_array[5]); } }\n", ile=1)
+
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
            "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",

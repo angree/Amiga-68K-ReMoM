@@ -1,6 +1,6 @@
 # autoinput-custom.txt - Custom wizard: portret, imie, ksiegi/zdolnosci, rasa, sztandar
 wait 4000
-click 160 155
+type n
 wait 3000
 click 283 186
 wait 3000

@@ -3,7 +3,7 @@
 # na generator swiata i robimy zrzuty ekranu glownego.
 wait 4000
 snap nowa-menu
-click 160 155
+type n
 wait 3000
 snap nowa-opcje
 click 283 186
