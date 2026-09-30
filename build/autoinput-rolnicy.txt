@@ -1,0 +1,21 @@
+# autoinput-rolnicy.txt - SAVE2.TST: miasto, rzad mieszkancow
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+click 160 8
+wait 5000
+click 100 30
+wait 6000
+snap ro-miasto
+click 100 40
+wait 2500
+snap ro-po1
+click 50 40
+wait 2500
+snap ro-po2
+wait 2000
+quit

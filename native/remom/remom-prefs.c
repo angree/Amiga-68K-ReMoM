@@ -53,7 +53,7 @@
 #include "muzyka_konw.h"
 
 static const char verstag[] __attribute__((used)) =
-    "$VER: remom-prefs 0.5.3 (29.09.2026)";
+    "$VER: remom-prefs 0.6.0 (30.09.2026)";
 
 #define PLIK "PROGDIR:amiga.cfg"
 

@@ -1277,6 +1277,62 @@ def latki_menu_amigi():
            "    l_movement_modes_array[5] = (int16_t)movement_modes_array.Flying;\n"
            "    { static int amiga_raz = 0; if(!amiga_raz) { amiga_raz = 1; printf(\"[amiga] tryby ruchu: %04x %04x %04x %04x %04x %04x (ma byc 0001 0020 0040 0004 0002 0008)\\n\", (unsigned)l_movement_modes_array[0], (unsigned)l_movement_modes_array[1], (unsigned)l_movement_modes_array[2], (unsigned)l_movement_modes_array[3], (unsigned)l_movement_modes_array[4], (unsigned)l_movement_modes_array[5]); } }\n", ile=1)
 
+    # 0.6.0 (gracz: po opracowaniu czaru na kartce czasem zostaja runy zamiast
+    # nazwy i opisu): animacja "odszyfrowania" kopiowala memcpy wspolrzedne ze
+    # struktur s_SPELL_DECODE (w porcie little-endian) do natywnej tablicy
+    # int16_t - bajty zamienione (53 -> 13568), etapy czyszczenia runow liczyly
+    # zle obszary. Ten sam wzorzec co tryby ruchu (0.5.3); przeszukanie calego
+    # kodu (C:\temp\memcpy_le.py): innych takich miejsc nie ma.
+    zamien("MoM/src/Spellbook.c",
+           "    memcpy(&spell_decode[28], &g_spell_decode_x_r, 12);\n    memcpy(&spell_decode[22], &g_spell_decode_x_l, 12);\n",
+           "    /* AMIGA: bylo memcpy ze struktur LE do tablicy natywnej - bajty zamienione */\n"
+           "    spell_decode[28] = g_spell_decode_x_r.field_0; spell_decode[29] = g_spell_decode_x_r.field_2; spell_decode[30] = g_spell_decode_x_r.field_4;\n"
+           "    spell_decode[31] = g_spell_decode_x_r.field_6; spell_decode[32] = g_spell_decode_x_r.field_8; spell_decode[33] = g_spell_decode_x_r.field_A;\n"
+           "    spell_decode[22] = g_spell_decode_x_l.field_0; spell_decode[23] = g_spell_decode_x_l.field_2; spell_decode[24] = g_spell_decode_x_l.field_4;\n"
+           "    spell_decode[25] = g_spell_decode_x_l.field_6; spell_decode[26] = g_spell_decode_x_l.field_8; spell_decode[27] = g_spell_decode_x_l.field_A;\n", ile=1)
+
+    # 0.6.0 (gracz: jednostka losowo dostaje ulepszenie czarem, ktorego nikt nie
+    # rzucil). Select_Unit_For_Enchantment (AI) wybiera jednostke tylko po
+    # wspolrzednych stosu z _ai_all_own_stacks, bez sprawdzenia wlasciciela; gdy
+    # zadnego stosu nie ma, czyta _ai_all_own_stacks[-1] (ReMoM: "OGBUG: could
+    # OOB") - na Amidze inna pamiec niz w DOS, wiec przypadkowe pole. Tu: brak
+    # stosu -> brak celu, a cel tylko sposrod wlasnych jednostek. Bez losowan.
+    zamien("MoM/src/AISPELL.c",
+           "    max_score = 0;\n\n    for(itr_units = 0; itr_units < _units; itr_units++)\n    {\n\n        /* OGBUG: could OOB `_ai_all_own_stacks[-1]` */\n",
+           "    max_score = 0;\n\n"
+           "    if(best_stack_idx == ST_UNDEFINED) { return ST_FALSE; }  /* AMIGA: bylo _ai_all_own_stacks[-1] */\n"
+           "    for(itr_units = 0; itr_units < _units; itr_units++)\n    {\n\n"
+           "        if(_UNITS[itr_units].owner_idx != player_idx) { continue; }  /* AMIGA: tylko wlasne jednostki */\n"
+           "        /* OGBUG: could OOB `_ai_all_own_stacks[-1]` */\n", ile=1)
+
+    # 0.6.0 (gracz: klik w pierwszego lub drugiego mieszkanca zamienia obu na
+    # robotnikow; powinno zamieniac do kliknietego). ReMoM: klik w mieszkanca i
+    # ustawial i+1 rolnikow (wyjatek: pierwszy -> 0), wiec klik w rolnika i>=1
+    # nic nie zmienial. Regula: klik w rolnika -> on i wszyscy na prawo
+    # robotnikami (rolnikow = i), klik w robotnika -> on i wszyscy na lewo
+    # rolnikami (i+1); nie mniej niz minimum rolnikow. Pomiar: DIAG w logu
+    # (run-remom-rolnicy): klik 1 przy 8 rolnikach i minimum 8 -> 8 (bez zmian).
+    t = czytaj("MoM/src/CityScr.c")
+    crlf = "\r\n" in t
+    t = t.replace("\r\n", "\n")
+    poczatek = "                if(required_farmer_count == 0)\n                {\n\n                    if(_CITIES[_city_idx].farmer_count == 0)\n"
+    koniec = "                Do_City_Calculations(_city_idx);\n\n                m_city_production_cost = City_Production_Cost(_CITIES[_city_idx].construction, _city_idx);\n"
+    if t.count(poczatek) != 1 or t.count(koniec) != 1:
+        sys.exit("LATKA NIE PASUJE: MoM/src/CityScr.c (rzad mieszkancow)")
+    a = t.index(poczatek)
+    b = t.index(koniec)
+    if not (a < b and b - a < 2000):
+        sys.exit("LATKA NIE PASUJE: MoM/src/CityScr.c (rzad mieszkancow, kolejnosc)")
+    nowy = ("                { /* AMIGA 0.6.0: zamiana do kliknietego mieszkanca */\n"
+            "                    int16_t amiga_rolnicy = (itr_job_fields < _CITIES[_city_idx].farmer_count) ? itr_job_fields : (int16_t)(itr_job_fields + 1);\n"
+            "                    if(amiga_rolnicy < required_farmer_count) { amiga_rolnicy = required_farmer_count; }\n"
+            "                    CITIES_FARMER_COUNT(_city_idx, (int8_t)amiga_rolnicy);\n"
+            "                }\n\n")
+    t = t[:a] + nowy + t[b:]
+    if crlf:
+        t = t.replace("\n", "\r\n")
+    zapisz("MoM/src/CityScr.c", t)
+
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
            "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",
