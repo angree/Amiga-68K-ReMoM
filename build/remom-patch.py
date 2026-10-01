@@ -1333,6 +1333,17 @@ def latki_menu_amigi():
         t = t.replace("\n", "\r\n")
     zapisz("MoM/src/CityScr.c", t)
 
+    # 0.6.1 (gracz: gra zawiesza sie na amen po przywolaniu Sprites, zapis
+    # MoM-zwis.zip): po przywolaniu ReMoM ustawia pozycje i plan mapy z
+    # _UNITS[_units] - rekordu ZA ostatnia jednostka (nowa ma indeks _units-1).
+    # W puli to bajty 0xCC: plan -52, rysowanie mapy w Main_Screen wisi
+    # ("MAIN map setup" bez "entering loop"). Odtworzone: run-remom-zwis.
+    zamien("MoM/src/OverSpel.c",
+           "                            _active_world_x = _UNITS[_units].wx;\n                            _active_world_y = _UNITS[_units].wy;\n                            _map_plane = _UNITS[_units].wp;\n",
+           "                            _active_world_x = _UNITS[(_units - 1)].wx;  /* AMIGA: bylo _UNITS[_units] - rekord za ostatnia jednostka */\n"
+           "                            _active_world_y = _UNITS[(_units - 1)].wy;\n"
+           "                            _map_plane = _UNITS[(_units - 1)].wp;\n", ile=1)
+
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
            "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",
@@ -1367,13 +1378,15 @@ def latki_menu_amigi():
     zamien(rel, "(line_top - 88)", "(line_top - 76)", ile=1)
     zamien(rel, "_credits_y = 95;", "_credits_y = 83;  /* AMIGA: 95 */", ile=2)
     # developer 2026-09-24: na poczatku creditsow autor ReMoM i port na Amige
-    zamien(rel, "#define CREDITS_COUNT 48", "#define CREDITS_COUNT 52  /* AMIGA: 48 + 4 linie portu */", ile=1)
+    zamien(rel, "#define CREDITS_COUNT 48", "#define CREDITS_COUNT 54  /* AMIGA: 48 + 6 linii portu (0.6.5: Amiga testing) */", ile=1)
     zamien(rel,
            "static char * credit_strings[CREDITS_COUNT][2] = {\n    {\"Game Designer\", \"Steve Barcia\"},",
            "static char * credit_strings[CREDITS_COUNT][2] = {\n"
            "    {\"PC Reassembly\", \"Jim Balcomb\"},  /* AMIGA */\n"
            "    {\"\", \"\"},\n"
            "    {\"Amiga Port\", \"Grzegorz Korycki\"},\n"
+           "    {\"\", \"\"},\n"
+           "    {\"Amiga Testing\", \"Solo Kazuki\"},\n"
            "    {\"\", \"\"},\n"
            "    {\"Game Designer\", \"Steve Barcia\"},", ile=1)
 

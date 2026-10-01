@@ -1,0 +1,38 @@
+# autoinput-zwis.txt - zapis gracza: Next Turn, po animacji przywolania klik
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+snap zw-mapa
+click 261 193
+wait 60000
+snap zw-tura
+click 160 100
+wait 15000
+snap zw-po
+click 300 193
+wait 8000
+snap zw-2
+click 160 100
+wait 8000
+click 300 193
+wait 8000
+snap zw-3
+click 160 100
+wait 8000
+click 300 193
+wait 8000
+snap zw-4
+click 160 100
+wait 8000
+click 300 193
+wait 8000
+snap zw-5
+click 160 100
+wait 8000
+snap zw-koniec
+wait 1000
+quit
