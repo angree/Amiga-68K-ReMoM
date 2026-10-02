@@ -164,6 +164,88 @@ uint32_t Pool_Bytes_Peak(void)
 }
 """
 
+AMIGA_STAN_C = r"""
+
+/* AMIGA 0.7.0: czysty stan danych gry (tablice z SAVE.GAM) zapamietany przed
+   pierwsza gra i przywracany przy kazdej nowej - ReMoM to jeden proces. */
+#define AMIGA_STAN_MAX 48
+static void * amiga_stan_p[AMIGA_STAN_MAX];
+static uint32_t amiga_stan_n[AMIGA_STAN_MAX];
+static int amiga_stan_ile = 0;
+static uint8_t * amiga_stan_kopia = NULL;
+static int amiga_stan_wczytano = 0;
+
+static void Amiga_Stan_Dodaj(void * p, uint32_t n)
+{
+    if(p != NULL && amiga_stan_ile < AMIGA_STAN_MAX)
+    {
+        amiga_stan_p[amiga_stan_ile] = p;
+        amiga_stan_n[amiga_stan_ile] = n;
+        amiga_stan_ile++;
+    }
+}
+
+/* tryb 0: zapamietaj (raz, tylko gdy nic nie wczytano); 1: przywroc; 2: wczytano gre */
+void Amiga_Stan_Gry(int tryb)
+{
+    uint32_t razem = 0;
+    uint8_t * q;
+    int i;
+
+    if(tryb == 2)
+    {
+        amiga_stan_wczytano = 1;
+        return;
+    }
+    if(tryb == 0)
+    {
+        if(amiga_stan_kopia != NULL || amiga_stan_wczytano) { return; }
+        for(i = 0; i < NUM_PLAYERS; i++) { Amiga_Stan_Dodaj(_HEROES2[i], (uint32_t)(sizeof(struct s_HERO) * NUM_HERO_TYPES)); }
+        Amiga_Stan_Dodaj(&_num_players, 2);
+        Amiga_Stan_Dodaj(&_landsize, 2);
+        Amiga_Stan_Dodaj(&_magic, 2);
+        Amiga_Stan_Dodaj(&_difficulty, 2);
+        Amiga_Stan_Dodaj(&_cities, 2);
+        Amiga_Stan_Dodaj(&_units, 2);
+        Amiga_Stan_Dodaj(&_turn, 2);
+        Amiga_Stan_Dodaj(&_unit, 2);
+        Amiga_Stan_Dodaj(_players, (uint32_t)NUM_PLAYERS * 1224);
+        Amiga_Stan_Dodaj(_world_maps, (uint32_t)NUM_PLANES * 4800);
+        Amiga_Stan_Dodaj(connectivity_grid_land, (uint32_t)NUM_PLANES * 96);
+        Amiga_Stan_Dodaj(connectivity_grid_sea, (uint32_t)NUM_PLANES * 96);
+        Amiga_Stan_Dodaj(_landmasses, (uint32_t)NUM_PLANES * 2400);
+        Amiga_Stan_Dodaj(_NODES, (uint32_t)NUM_NODES * 48);
+        Amiga_Stan_Dodaj(_FORTRESSES, (uint32_t)NUM_FORTRESSES * 4);
+        Amiga_Stan_Dodaj(_TOWERS, (uint32_t)NUM_TOWERS * 4);
+        Amiga_Stan_Dodaj(_LAIRS, (uint32_t)NUM_LAIRS * 24);
+        Amiga_Stan_Dodaj(_ITEMS, (uint32_t)NUM_ITEMS * 50);
+        Amiga_Stan_Dodaj(_CITIES, (uint32_t)NUM_CITIES * 114);
+        Amiga_Stan_Dodaj(_UNITS, (uint32_t)NUM_UNITS * 32);
+        Amiga_Stan_Dodaj(_map_square_terrain_specials, (uint32_t)NUM_PLANES * 2400);
+        Amiga_Stan_Dodaj(_square_explored, (uint32_t)NUM_PLANES * 2400);
+        Amiga_Stan_Dodaj(movement_mode_cost_maps, (uint32_t)NUM_PLANES * 14400);
+        Amiga_Stan_Dodaj(events_table, 100);
+        Amiga_Stan_Dodaj(_map_square_flags, (uint32_t)NUM_PLANES * 2400);
+        Amiga_Stan_Dodaj(&grand_vizier, 2);
+        Amiga_Stan_Dodaj(_prefab_item_table, 250);
+        Amiga_Stan_Dodaj(hero_names_table, (uint32_t)(sizeof(struct s_INACTV_HERO) * NUM_HERO_TYPES));
+        for(i = 0; i < amiga_stan_ile; i++) { razem += amiga_stan_n[i]; }
+        amiga_stan_kopia = (uint8_t *)malloc((size_t)razem);
+        if(amiga_stan_kopia == NULL) { amiga_stan_ile = 0; return; }
+        q = amiga_stan_kopia;
+        for(i = 0; i < amiga_stan_ile; i++) { memcpy(q, amiga_stan_p[i], amiga_stan_n[i]); q += amiga_stan_n[i]; }
+        printf("[amiga] stan gry: czysty stan zapamietany (%d tablic, %lu B)\n", amiga_stan_ile, (unsigned long)razem);
+        fflush(stdout);
+        return;
+    }
+    if(amiga_stan_kopia == NULL) { return; }
+    q = amiga_stan_kopia;
+    for(i = 0; i < amiga_stan_ile; i++) { memcpy(amiga_stan_p[i], q, amiga_stan_n[i]); q += amiga_stan_n[i]; }
+    printf("[amiga] stan gry: nowa gra od czystego stanu\n");
+    fflush(stdout);
+}
+"""
+
 def zamien(rel, stare, nowe, ile=None):
     """Dokladna zamiana. ile=None: wszystkie wystapienia (co najmniej jedno)."""
     t = czytaj(rel)
@@ -1343,6 +1425,37 @@ def latki_menu_amigi():
            "                            _active_world_x = _UNITS[(_units - 1)].wx;  /* AMIGA: bylo _UNITS[_units] - rekord za ostatnia jednostka */\n"
            "                            _active_world_y = _UNITS[(_units - 1)].wy;\n"
            "                            _map_plane = _UNITS[(_units - 1)].wp;\n", ile=1)
+
+    # 0.7.0 (gracz: po nowej grze bez restartu w History sa czarodzieje ze starej
+    # gry, ten sam zestaw przeciwnikow, czary AI na jego jednostkach; po
+    # restarcie gry dobrze). ReMoM to jeden proces - w oryginale nowa gra
+    # powstawala w swiezym MAGIC.EXE. Przy pierwszym wejsciu w menu glowne
+    # (nic jeszcze nie wczytane) zapamietywany jest czysty stan wszystkich
+    # tablic, ktore ida do SAVE.GAM, a kazda nowa gra zaczyna od jego
+    # przywrocenia. Swiezy proces: przywrocenie = to samo, RNG bez zmian.
+    t = czytaj("MoX/src/LOADSAVE.c")
+    zapisz("MoX/src/LOADSAVE.c", t + AMIGA_STAN_C.replace("\n", "\r\n" if "\r\n" in t else "\n"))
+    zamien("MoX/src/LOADSAVE.c",
+           "    LOG_INFO(LOG_CAT_LOADSAVE, \"Load_SAVE_GAM _unit BEFORE = %d\", _unit);",
+           "    { extern void Amiga_Stan_Gry(int tryb); Amiga_Stan_Gry(2); }  /* AMIGA: od teraz stan nie jest czysty */\n"
+           "    LOG_INFO(LOG_CAT_LOADSAVE, \"Load_SAVE_GAM _unit BEFORE = %d\", _unit);", ile=1)
+    zamien("MoM/src/MOM_SCR.c",
+           "                Load_Palette(2, -1, 0);\n                Apply_Palette();\n                // TODO  Main_Menu_Screen_Control();",
+           "                { extern void Amiga_Stan_Gry(int tryb); Amiga_Stan_Gry(0); }  /* AMIGA: czysty stan przed pierwsza gra */\n"
+           "                Load_Palette(2, -1, 0);\n                Apply_Palette();\n                // TODO  Main_Menu_Screen_Control();", ile=1)
+    zamien("MoM/src/MOM_SCR.c",
+           "                /* HACK */  if(Newgame_Control())\n",
+           "                { extern void Amiga_Stan_Gry(int tryb); Amiga_Stan_Gry(1); }  /* AMIGA: nowa gra od czystego stanu */\n"
+           "                /* HACK */  if(Newgame_Control())\n", ile=1)
+    # 0.7.0 (gracz: w menu Info "history" mala litera)
+    zamien("MoM/src/AdvsrScr.c",
+           "char cnst_Info_Msg_4[] = \"history\";",
+           "char cnst_Info_Msg_4[] = \"History\";  /* AMIGA: bylo \"history\" */", ile=1)
+
+    # 0.7.0: naglowek History zawsze "September" (ReMoM: months[8] na sztywno)
+    zamien("MoM/src/AdvsrScr.c",
+           "    stu_strcpy(GUI_String_1, (char *)&months[8]);",
+           "    stu_strcpy(GUI_String_1, (char *)&months[WTF__turns_months]);  /* AMIGA: bylo months[8] */", ile=1)
 
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
