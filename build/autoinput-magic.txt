@@ -1,0 +1,40 @@
+# autoinput-magic.txt - wczytaj SAVE2.TST -> Magic; Quit -> nowa gra -> Magic
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+click 200 8
+wait 5000
+snap mg-magic-wczytana
+key esc
+wait 3000
+click 25 8
+wait 4000
+click 60 177
+wait 4000
+type n
+wait 3000
+click 283 186
+wait 3000
+click 202 34
+wait 3000
+key return
+wait 3000
+click 238 82
+wait 3000
+click 245 72
+wait 5000
+wait 2000
+key return
+wait 3000
+snap mg-nowa-mapa
+click 200 8
+wait 5000
+snap mg-magic-nowa
+key esc
+wait 3000
+snap mg-po-magic
+quit

@@ -1457,6 +1457,65 @@ def latki_menu_amigi():
            "    stu_strcpy(GUI_String_1, (char *)&months[8]);",
            "    stu_strcpy(GUI_String_1, (char *)&months[WTF__turns_months]);  /* AMIGA: bylo months[8] */", ile=1)
 
+    # 0.7.1 (gracz: nowa gra z pierwszym miastem na nodzie). Generate_Home_Cities
+    # sprawdza nody/wieze/leza odlegloscia (minimum_site_distance / 2); po
+    # szesciu nieudanych rundach minimum spada do 1, 1/2 = 0 i nawet ten sam
+    # kwadrat przestaje byc wykluczony (ReMoM: "same map square is not
+    # excluded"). Odtworzone HeMoM-em na PC: ziarno 3, mala mapa, forteca
+    # gracza 2 na nodzie 1 (C:\temp\wezel.sh). Tu: ten sam kwadrat zawsze
+    # odrzucony. Gdy minimum >= 2 te kwadraty i tak sa odrzucane, wiec
+    # losowania na zwyklej mapie sie nie zmieniaja.
+    zamien("MoM/src/MAPGEN.c",
+           "                                DBG_Invalid_Reason = 5;\n"
+           "                                DBG_Invalid_Reason_5_Count++;\n"
+           "                            }\n"
+           "                        }\n"
+           "                    }\n",
+           "                                DBG_Invalid_Reason = 5;\n"
+           "                                DBG_Invalid_Reason_5_Count++;\n"
+           "                            }\n"
+           "                        }\n"
+           "                    }\n"
+           "                    /* AMIGA 0.7.1: nigdy na nodzie, wiezy ani lezu (przy minimum 1 dystans/2 = 0) */\n"
+           "                    if((minimum_site_distance / 2) < 1)\n"
+           "                    {\n"
+           "                        if(Square_Is_Node_NewGame(wx, wy, wp) == ST_TRUE) { Invalid = ST_TRUE; DBG_Invalid_Reason = 3; }\n"
+           "                        if(Square_Has_Tower_NewGame(wx, wy) == ST_TRUE) { Invalid = ST_TRUE; DBG_Invalid_Reason = 4; }\n"
+           "                        for(bldg_idx = 0; bldg_idx < NUM_LAIRS; bldg_idx++)\n"
+           "                        {\n"
+           "                            if(_LAIRS[bldg_idx].wx == wx && _LAIRS[bldg_idx].wy == wy && _LAIRS[bldg_idx].wp == wp) { Invalid = ST_TRUE; DBG_Invalid_Reason = 5; }\n"
+           "                        }\n"
+           "                    }\n", ile=1)
+
+    # 0.7.1 (gracz: przy nowym czarze runy zamieniaja sie w inne runy zamiast
+    # w nazwe). W oryginale wiersz czaru na stronie i GUI_Multipurpose_Int to
+    # ta sama zmienna (ReMoM: "m_spell_list_count ... DNE in Dasm; uses
+    # GUI_Multipurpose_Int"). ReMoM zapisuje wiersz do m_spell_list_count, a
+    # animacja odslania wiersz GUI_Multipurpose_Int - stara wartosc z innego
+    # ekranu (np. licznik slawy po bitwie), wiec odslaniany byl zly wiersz.
+    zamien("MoM/src/Spellbook.c",
+           "        Clear_Fields();\n        g_spellbook_anim_stage = 0;\n",
+           "        Clear_Fields();\n"
+           "        GUI_Multipurpose_Int = m_spell_list_count;  /* AMIGA 0.7.1: wiersz czaru (w oryginale ta sama zmienna) */\n"
+           "        g_spellbook_anim_stage = 0;\n", ile=1)
+
+    # 0.7.1 (gracz: dalej losowe ulepszenia na jego jednostkach). Czar na
+    # jednostke (AI): gdy AITP_Unit_Enchantment nie znajdzie celu, zwraca
+    # FALSE, ale ReMoM i tak wykonuje _UNITS[spell_target_idx].enchantments |=
+    # z spell_target_idx = 0 - a jednostka 0 to zwykle jednostka gracza.
+    # Sasiednie przypadki (czar na miasto) maja ten warunek; tu go brakowalo.
+    zamien("MoM/src/OverSpel.c",
+           "                    // @@After_CastUnitEnch\n\n                    if(player_idx == HUMAN_PLAYER_IDX)\n",
+           "                    // @@After_CastUnitEnch\n\n"
+           "                    if(cast_can_continue == ST_TRUE)  /* AMIGA 0.7.1: bez celu nic nie rzucamy (bylo: _UNITS[0]) */\n"
+           "                    {\n"
+           "                    if(player_idx == HUMAN_PLAYER_IDX)\n", ile=1)
+    zamien("MoM/src/OverSpel.c",
+           "                        _UNITS[spell_target_idx].mutations |= UM_UNDEAD;\n\n                    }\n\n                } break;  /* case scc_Unit_Enchantment, scc_Unit_Enchantment_Normal_Only:*/",
+           "                        _UNITS[spell_target_idx].mutations |= UM_UNDEAD;\n\n                    }\n"
+           "                    }  /* AMIGA 0.7.1: if(cast_can_continue == ST_TRUE) */\n\n"
+           "                } break;  /* case scc_Unit_Enchantment, scc_Unit_Enchantment_Normal_Only:*/", ile=1)
+
     # 0.3.1 diagnoza: stan puli przy kazdym wejsciu w ekran Load (wyciek?)
     zamien("MoM/src/MOM_SCR.c",
            "                MOUSE_LOG(\"SCR t=%llu ENTER screen=Load\\n\", (unsigned long long)Platform_Get_Millies());",

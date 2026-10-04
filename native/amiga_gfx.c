@@ -416,7 +416,7 @@ static struct BitMap  *g_tempbm;
  * here - so the bar always shows the game's own name and version and this
  * file never hard-codes either. The default only ever shows if the screen
  * opens before the game names itself. */
-static UBYTE g_screen_title[80] = "Master of Magic 0.7.0";
+static UBYTE g_screen_title[80] = "Master of Magic 0.7.1";
 
 void amigagfx_set_screen_title(const char *t)
 {
@@ -1320,8 +1320,10 @@ static int open_window_wb(int w, int h)
 	                          WA_MaxWidth,    (ULONG)g_win_maxw,
 	                          WA_MaxHeight,   (ULONG)g_win_maxh,
 	                          WA_Flags, (ULONG)(WFLG_DRAGBAR | WFLG_DEPTHGADGET |
-	                                            WFLG_CLOSEGADGET | WFLG_SIZEGADGET |
-	                                            WFLG_SIZEBRIGHT | WFLG_SIZEBBOTTOM |
+	                                            WFLG_CLOSEGADGET |
+	                                            /* 0.7.1: bez gadzetu rozmiaru - MoM ma
+	                                             * stale 320x200, wieksze okno pokazywalo
+	                                             * tylko obciety obraz (zgloszenie gracza) */
 	                                            WFLG_ACTIVATE | WFLG_REPORTMOUSE |
 	                                            WFLG_RMBTRAP | WFLG_SMART_REFRESH |
 	                                            WFLG_NOCAREREFRESH),
