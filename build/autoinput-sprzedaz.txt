@@ -1,0 +1,30 @@
+# autoinput-sprzedaz.txt - SAVE2.B73: Newcastle (srodek mapy, prawy klik) -> klik w spichlerz -> Y -> drugi budynek
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+rclick 130 119
+wait 8000
+move 55 165
+wait 2000
+click 55 165
+wait 5000
+snap sp-pytanie
+type y
+wait 6000
+snap sp-po
+move 155 175
+wait 2000
+click 155 175
+wait 5000
+snap sp-drugi
+key esc
+wait 3000
+snap sp-mapa
+wait 3000
+key esc
+wait 3000
+quit

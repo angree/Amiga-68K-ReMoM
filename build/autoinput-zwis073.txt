@@ -1,0 +1,31 @@
+# autoinput-zwis073.txt - SAVE2.B73 gracza (0.7.1): prawy klik w miasto na srodku mapy po wczytaniu
+# (srodek = kolumna 6, wiersz 5 -> 130,119), potem Cities -> Cai-ru (outpost) -> prawy klik
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+rclick 130 119
+wait 10000
+snap z7-miasto
+key esc
+wait 5000
+snap z7-po-esc
+click 150 10
+wait 4000
+click 100 62
+wait 5000
+rclick 130 119
+wait 10000
+snap z7-osada
+key esc
+wait 5000
+snap z7-po-osadzie
+click 150 10
+wait 5000
+snap z7-lista-po
+key esc
+wait 3000
+quit

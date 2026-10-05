@@ -1446,7 +1446,14 @@ def latki_menu_amigi():
     zamien("MoM/src/MOM_SCR.c",
            "                /* HACK */  if(Newgame_Control())\n",
            "                { extern void Amiga_Stan_Gry(int tryb); Amiga_Stan_Gry(1); }  /* AMIGA: nowa gra od czystego stanu */\n"
+           "                { extern int16_t _given_chance_to_rename_home_city; _given_chance_to_rename_home_city = 0; }  /* AMIGA 0.7.3: pytanie o nazwe stolicy w kazdej nowej grze */\n"
            "                /* HACK */  if(Newgame_Control())\n", ile=1)
+    # 0.7.3 (gracz: "sprawdz, czy za kazdym razem losuje wrogich magow"):
+    # przeciwnicy nowej gry do logu - dowod z przebiegu, nie z czytania kodu.
+    zamien("MoM/src/MAPGEN.c",
+           "    Init_Computer_Players();\n",
+           "    Init_Computer_Players();\n"
+           "    { int16_t amiga_i; printf(\"[amiga] nowa gra, przeciwnicy:\"); for(amiga_i = 1; amiga_i < _num_players; amiga_i++) { printf(\" %s\", _players[amiga_i].name); } printf(\"\\n\"); fflush(stdout); }  /* AMIGA 0.7.3 */\n", ile=1)
     # 0.7.0 (gracz: w menu Info "history" mala litera)
     zamien("MoM/src/AdvsrScr.c",
            "char cnst_Info_Msg_4[] = \"history\";",
@@ -1456,6 +1463,25 @@ def latki_menu_amigi():
     zamien("MoM/src/AdvsrScr.c",
            "    stu_strcpy(GUI_String_1, (char *)&months[8]);",
            "    stu_strcpy(GUI_String_1, (char *)&months[WTF__turns_months]);  /* AMIGA: bylo months[8] */", ile=1)
+
+    # 0.7.3 (gracz: gra wisi po wejsciu do swiezo zbudowanego miasta; zapis
+    # MoM-blad.zip, osada Klackonow Cai-ru). Outpost_Cityscape_Draw bierze
+    # domek z cityscape_houses_seg[typ * 10], a tablica ma 3 typy po 5
+    # obrazkow (LOADER.c: [typ * 5 + n]) - w asemblerze 10 to offset w
+    # bajtach (slowo = 2 B). Typ 2 (kopce Klackonow) -> indeks 20 poza
+    # tablica 15 -> smieciowy wskaznik -> rysowanie wiesza gre. Odtworzone:
+    # build/run-remom-zwis073 (prawy klik w osade).
+    zamien("MoM/src/CITYSCAP.c",
+           "cityscape_houses_seg[(race_house_type * 10)]",
+           "cityscape_houses_seg[(race_house_type * 5)]  /* AMIGA 0.7.3: bylo * 10 (offset bajtowy z asemblera) */", ile=2)
+
+    # 0.7.3 (gracz: sprzedany budynek nie znika i nie ma za niego zlota).
+    # City_Sell_Building(city_idx, bldg_idx, gold), a ekran miasta wolal ja
+    # z zamienionymi argumentami (bldg, city) - usuwal budynek nr <miasto>
+    # w miescie nr <budynek> i dawal zloto wlascicielowi tamtego miasta.
+    zamien("MoM/src/CityScr.c",
+           "City_Sell_Building(cityscape_bldg_idx, _city_idx, building_value);",
+           "City_Sell_Building(_city_idx, cityscape_bldg_idx, building_value);  /* AMIGA 0.7.3: argumenty byly zamienione */", ile=1)
 
     # 0.7.1 (gracz: nowa gra z pierwszym miastem na nodzie). Generate_Home_Cities
     # sprawdza nody/wieze/leza odlegloscia (minimum_site_distance / 2); po

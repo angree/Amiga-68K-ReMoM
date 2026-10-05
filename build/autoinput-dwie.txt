@@ -1,0 +1,38 @@
+# autoinput-dwie.txt - nowa gra, zrzut (pytanie o nazwe stolicy), Quit do menu, druga nowa gra, zrzut
+wait 4000
+type n
+wait 3000
+click 283 186
+wait 3000
+click 202 34
+wait 3000
+key return
+wait 3000
+click 238 82
+wait 3000
+click 245 72
+wait 20000
+snap dw-gra1
+key return
+wait 4000
+click 25 8
+wait 4000
+click 60 177
+wait 4000
+type n
+wait 3000
+click 283 186
+wait 3000
+click 202 34
+wait 3000
+key return
+wait 3000
+click 238 82
+wait 3000
+click 245 72
+wait 20000
+snap dw-gra2
+key return
+wait 4000
+snap dw-gra2-mapa
+quit
