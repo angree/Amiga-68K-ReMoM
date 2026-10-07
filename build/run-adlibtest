@@ -1,0 +1,13 @@
+; run-adlibtest - koszt syntezy AdLib live na maszynie (probe/adlib/adlibtest.c)
+; -> Work:adlibtest.txt; najpierw 22 kHz, potem 11 kHz (dopisane)
+FailAt 1000000
+Stack 1000000
+CD Work:
+Delete >NIL: Work:reset.flag
+Run >NIL: Work:straznik
+Delete >NIL: Work:mom.done
+adlibtest 22050 10
+Copy Work:adlibtest.txt Work:adlibtest-22.txt
+adlibtest 11025 10
+Copy Work:adlibtest.txt Work:adlibtest-11.txt
+Echo >Work:mom.done "rc=0"

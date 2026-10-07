@@ -1448,6 +1448,15 @@ def latki_menu_amigi():
            "                { extern void Amiga_Stan_Gry(int tryb); Amiga_Stan_Gry(1); }  /* AMIGA: nowa gra od czystego stanu */\n"
            "                { extern int16_t _given_chance_to_rename_home_city; _given_chance_to_rename_home_city = 0; }  /* AMIGA 0.7.3: pytanie o nazwe stolicy w kazdej nowej grze */\n"
            "                /* HACK */  if(Newgame_Control())\n", ile=1)
+    # 0.7.5 (gracz: "ciagle trafiam na Klackonow jako najblizsze neutralne
+    # miasto - czy rasy sa losowe?"): rasy miast nowej gry do logu. Rasa
+    # neutralnych miast jest losowana raz na kontynent (Generate_Neutral_Cities:
+    # m_landmasses_default_race), wiec cale jedno ladowisko ma jedna rase.
+    zamien("MoM/src/MAPGEN.c",
+           "    Generate_Neutral_Cities(MYRROR_PLANE);\n",
+           "    Generate_Neutral_Cities(MYRROR_PLANE);\n"
+           "    { int16_t amiga_i; printf(\"[amiga] nowa gra, miasta (wlasciciel:rasa):\"); for(amiga_i = 0; amiga_i < _cities; amiga_i++) { printf(\" %d:%s\", (int)_CITIES[amiga_i].owner_idx, *_race_type_table[_CITIES[amiga_i].race].name); } printf(\"\\n\"); fflush(stdout); }  /* AMIGA 0.7.5 */\n", ile=1)
+
     # 0.7.3 (gracz: "sprawdz, czy za kazdym razem losuje wrogich magow"):
     # przeciwnicy nowej gry do logu - dowod z przebiegu, nie z czytania kodu.
     zamien("MoM/src/MAPGEN.c",

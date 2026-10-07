@@ -55,8 +55,10 @@ static UBYTE aa_allocmap[] = { 15 };
 /* Depth of the queue. Two buffers (the original ping-pong) only held about
  * 90 ms, and a single slow geoscape frame drained it; the mixer then had
  * nothing to hand Paula and the music chopped. Eight buffers give ~0.7 s of
- * slack for 8 KB of Chip RAM, and each refill still mixes just one buffer. */
-#define AA_MUS_BUFS 8
+ * slack for 8 KB of Chip RAM, and each refill still mixes just one buffer.
+ * Ami MoM 0.7.5: 16 (gracz: AdLib live gubi chwilami nuty - 8 x 4096 przy
+ * 22 kHz to tylko 1,5 s zapasu na wczytywanie z dysku; 16 = 3 s, 64 KB Chip). */
+#define AA_MUS_BUFS 16
 
 static int   aa_mus_active = 0;
 static int   aa_mus_ended  = 0;         /* refill returned end-of-stream */
@@ -394,6 +396,7 @@ static int MusStartL(int period, int chunk_samples,
 
 static unsigned long aa_mus_glod = 0;   /* 0.4.4: ile razy kolejka byla pusta (slychac przerwe) */
 unsigned long AmigaAudio_MusicUnderruns(void) { return aa_mus_glod; }
+int AmigaAudio_MusicThreadRunning(void) { return aa_thr_zyje; }   /* 0.7.5 */
 
 static void MusServiceL(void)
 {

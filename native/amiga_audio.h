@@ -101,6 +101,7 @@ int  AmigaAudio_MusicFinished(void);
 int  AmigaAudio_MusicThreadStart(int pri_wzgledem_gry);
 void AmigaAudio_MusicThreadStop(void);
 unsigned long AmigaAudio_MusicUnderruns(void);   /* ile razy kolejka muzyki byla pusta */
+int  AmigaAudio_MusicThreadRunning(void);          /* 1 = muzyke dolewa osobny proces (0.7.5) */
 
 #ifdef __cplusplus
 }

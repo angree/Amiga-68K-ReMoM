@@ -12,6 +12,7 @@
  * (kopiuje tylko te, ktorych rozmiar sie nie zgadza). */
 
 #include <proto/exec.h>
+#include <exec/execbase.h>
 #include <proto/dos.h>
 #include <exec/memory.h>
 #include <dos/dos.h>
@@ -164,6 +165,13 @@ void Amiga_Preload_Start(void)
 
     amiga_pool_pamiec = Amiga_Pamiec_Wypisz;
     Amiga_Pamiec_Wypisz("na starcie");
+    {   /* 0.7.5: procesor do logu - pierwsze pytanie przy zgloszeniach o muzyke/predkosc */
+        UWORD a = ((struct ExecBase *)SysBase)->AttnFlags;
+        printf("[amiga] procesor: %s%s\n",
+               (a & 0x80) ? "68060" : (a & 0x08) ? "68040" : (a & 0x04) ? "68030" : (a & 0x02) ? "68020" : (a & 0x01) ? "68010" : "68000",
+               (a & 0x70) ? " + FPU" : "");
+        fflush(stdout);
+    }
     if(!amiga_opt_preload) { return; }
 
     /* lista LBX w katalogu gry (biezacy katalog = tam, gdzie gra je otwiera) */

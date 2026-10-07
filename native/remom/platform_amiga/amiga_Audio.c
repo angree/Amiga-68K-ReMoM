@@ -145,6 +145,7 @@ static int Amiga_Audio_Midi(const uint8_t * p, uint32_t rozmiar, unsigned long h
 
 /* raz na klatke (amiga_PFL.c) - dolewa bufory muzyki */
 static unsigned long amiga_audio_serwis_licznik = 0;
+static unsigned long amiga_audio_przerwy = 0;   /* 0.7.5: ile przerw juz wypisano */
 
 void Amiga_Audio_Service(void)
 {
@@ -155,7 +156,28 @@ void Amiga_Audio_Service(void)
     if(amiga_muzyka != NULL || amiga_adlib != NULL)
     {
         amiga_audio_serwis_licznik++;
-        AmigaAudio_MusicService();
+        /* 0.7.5 (gracz: AdLib live gubi chwilami nuty): gdy dziala proces
+           muzyki, glowna petla NIE liczy juz buforow. Liczyla je pod tym samym
+           semaforem z priorytetem gry (0) - gdy wywlaszczyl ja system plikow
+           (wczytywanie LBX), proces muzyki (priorytet 1) czekal na semafor i
+           kolejka sie wyczerpywala (odwrocenie priorytetow). */
+        if(!AmigaAudio_MusicThreadRunning())
+        {
+            AmigaAudio_MusicService();
+        }
+        if(AmigaAudio_MusicUnderruns() != amiga_audio_przerwy)
+        {
+            /* przerwa w muzyce: do logu (z procesu muzyki nie wolno - stdio libnix) */
+            unsigned long teraz = AmigaAudio_MusicUnderruns();
+            if(amiga_audio_przerwy < 200UL)
+            {
+                printf("[amiga] muzyka: PRZERWA (kolejka pusta) t=%lu ms, utwor %08lx, %s, razem %lu\n",
+                       (unsigned long)Platform_Get_Millies(), amiga_muzyka_fnv,
+                       (amiga_adlib != NULL) ? "AdLib live" : "plik", teraz);
+                fflush(stdout);
+            }
+            amiga_audio_przerwy = teraz;
+        }
         if(AmigaAudio_MusicFinished())
         {
             /* utwor bez petli dograny - kanaly 2 i 3 wracaja do efektow */
