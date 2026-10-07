@@ -164,6 +164,7 @@ void Amiga_Preload_Start(void)
     int i;
 
     amiga_pool_pamiec = Amiga_Pamiec_Wypisz;
+    { extern void Amiga_Straznik_Start(void); Amiga_Straznik_Start(); }  /* 0.7.6: straznik zwisu */
     Amiga_Pamiec_Wypisz("na starcie");
     {   /* 0.7.5: procesor do logu - pierwsze pytanie przy zgloszeniach o muzyke/predkosc */
         UWORD a = ((struct ExecBase *)SysBase)->AttnFlags;

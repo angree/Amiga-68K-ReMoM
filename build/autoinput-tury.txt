@@ -1,91 +1,165 @@
-# autoinput-tury.txt - wczytanie SAVE1 i 10x Next Turn z bitwami na AUTO (gracz 0.4.0: wyjscie do AmigaOS po turze)
+# autoinput-tury.txt - SAVE2.B73: 12 tur (Patrol dla oddzialow, potem Next Turn)
 wait 4000
 click 160 143
 wait 3000
-click 123 52
+click 123 67
 wait 1500
 click 100 177
-wait 9000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+wait 10000
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
 wait 2000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+key esc
 wait 2000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+snap tu-01
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
 wait 2000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+key esc
 wait 2000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+snap tu-02
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
 wait 2000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+key esc
 wait 2000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+snap tu-03
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
 wait 2000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+key esc
 wait 2000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+snap tu-04
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
 wait 2000
-click 280 185
-wait 15000
-click 172 179
-wait 30000
-key 13
-wait 3000
-click 160 100
+key esc
 wait 2000
-snap t-koniec
-wait 1000
+snap tu-05
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
+wait 2000
+key esc
+wait 2000
+snap tu-06
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
+wait 2000
+key esc
+wait 2000
+snap tu-07
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
+wait 2000
+key esc
+wait 2000
+snap tu-08
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
+wait 2000
+key esc
+wait 2000
+snap tu-09
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
+wait 2000
+key esc
+wait 2000
+snap tu-10
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
+wait 2000
+key esc
+wait 2000
+snap tu-11
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 288 180
+wait 1500
+click 261 193
+wait 25000
+key return
+wait 2000
+key esc
+wait 2000
+snap tu-12
 quit

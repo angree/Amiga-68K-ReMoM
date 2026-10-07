@@ -1448,6 +1448,27 @@ def latki_menu_amigi():
            "                { extern void Amiga_Stan_Gry(int tryb); Amiga_Stan_Gry(1); }  /* AMIGA: nowa gra od czystego stanu */\n"
            "                { extern int16_t _given_chance_to_rename_home_city; _given_chance_to_rename_home_city = 0; }  /* AMIGA 0.7.3: pytanie o nazwe stolicy w kazdej nowej grze */\n"
            "                /* HACK */  if(Newgame_Control())\n", ile=1)
+    # 0.7.6 (gracz: "gra potrafi sie wylozyc po Next Turn" - log tego nie
+    # mowil). Biezaca faza tury (kazdy PERF_CALL w Next_Turn_Calc/Proc) do
+    # amiga_faza (native/amiga_trap.c): wypisuje ja raport wywrotki (CPU TRAP)
+    # i straznik zwisu (amiga_Straznik.c). Do logu tylko poczatek i koniec tury.
+    zamien("platform/include/Platform_Perf.h",
+           "#define PERF_CALL(CALL)   do { Perf_Zone_Begin(#CALL); CALL; Perf_Zone_End(); } while(0)",
+           "extern const char * volatile amiga_faza;  /* AMIGA 0.7.6 */\n"
+           "#define PERF_CALL(CALL)   do { amiga_faza = #CALL; Perf_Zone_Begin(#CALL); CALL; Perf_Zone_End(); } while(0)", ile=1)
+    zamien("platform/include/Platform_Perf.h",
+           "#define PERF_CALL(CALL)   CALL",
+           "extern const char * volatile amiga_faza;  /* AMIGA 0.7.6 */\n"
+           "#define PERF_CALL(CALL)   do { amiga_faza = #CALL; CALL; } while(0)", ile=1)
+    zamien("MoM/src/NEXTTURN.c",
+           "    Set_Random_Seed(RNG_AI_Turn_Seed);\n",
+           "    Set_Random_Seed(RNG_AI_Turn_Seed);\n"
+           "    printf(\"[amiga] Next Turn: tura %d, t=%lu ms\\n\", (int)_turn, (unsigned long)Platform_Get_Millies()); fflush(stdout);  /* AMIGA 0.7.6 */\n", ile=1)
+    zamien("MoM/src/NEXTTURN.c",
+           "    RNG_AI_Turn_Seed = Get_Random_Seed();\n",
+           "    RNG_AI_Turn_Seed = Get_Random_Seed();\n"
+           "    printf(\"[amiga] Next Turn: tura %d przeliczona, t=%lu ms\\n\", (int)_turn, (unsigned long)Platform_Get_Millies()); fflush(stdout); amiga_faza = \"po turze\";  /* AMIGA 0.7.6 */\n", ile=1)
+
     # 0.7.5 (gracz: "ciagle trafiam na Klackonow jako najblizsze neutralne
     # miasto - czy rasy sa losowe?"): rasy miast nowej gry do logu. Rasa
     # neutralnych miast jest losowana raz na kontynent (Generate_Neutral_Cities:

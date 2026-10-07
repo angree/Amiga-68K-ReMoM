@@ -163,6 +163,10 @@ static const char *trap_name(unsigned long n)
  * of address space; a wild PC could itself fault, and we are past caring
  * about elegance at that point but not about recursion).
  */
+/* Ami MoM 0.7.6: biezaca faza gry (PERF_CALL w turze, ekran) - ustawiana przez
+ * silnik, wypisywana przy wywrotce i przez straznika zwisu (amiga_Straznik.c). */
+const char * volatile amiga_faza = "start";
+
 void amiga_trap_describe(char *buf, int len)
 {
 	unsigned long pc = amiga_trap_pc;
@@ -188,6 +192,7 @@ void amiga_trap_describe(char *buf, int len)
 			n += snprintf(buf + n, len - n, " %08lx", amiga_trap_frame[i]);
 		n += snprintf(buf + n, len - n, "\n");
 	}
+	n += snprintf(buf + n, len - n, "  faza gry: %s\n", amiga_faza ? amiga_faza : "?");
 	/* Where our own code is: PC - textbase + (nm address of amiga_trap_land)
 	 * gives the address to look up in the unstripped binary. */
 	n += snprintf(buf + n, len - n, "  textbase: amiga_trap_land is at 0x%08lx (nm it to map the PC)\n",

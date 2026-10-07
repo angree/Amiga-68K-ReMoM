@@ -78,6 +78,14 @@ void Amiga_WB_Start(int argc)
         }
         else
         {
+            /* 0.7.6 (gracz wyslal log sesji BEZ wywrotki - log tej z wywrotka
+               nadpisal kolejny start): dwa poprzednie logi zostaja obok,
+               mom-wb-1.log (poprzedni start) i mom-wb-2.log. */
+            DeleteFile((CONST_STRPTR)"mom-wb-2.log");
+            Rename((CONST_STRPTR)"mom-wb-1.log", (CONST_STRPTR)"mom-wb-2.log");
+            Rename((CONST_STRPTR)"mom-wb.log", (CONST_STRPTR)"mom-wb-1.log");
+            DeleteFile((CONST_STRPTR)"mom-zwis-1.log");
+            Rename((CONST_STRPTR)"mom-zwis.log", (CONST_STRPTR)"mom-zwis-1.log");
             freopen("mom-wb.log", "w", stdout);
             freopen("NIL:", "w", stderr);
         }

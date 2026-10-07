@@ -1,5 +1,5 @@
-; run-remom-tury - zapis gracza (SAVE2.B73): 12 x Next Turn (zgloszenie: gra potrafi sie wylozyc po Next Turn)
-; Work:run - PROFIL: ekran mapy w stanie ustalonym (autoinput-tury.txt)
+; run-remom-zwis-test - test straznika zwisu: Set REMOM_TEST_ZWIS 1, po 25 s petla bez konca -> Work:mom-zwis.log
+; Work:run - PROFIL: ekran mapy w stanie ustalonym (autoinput-dwie.txt)
 ; -> Work:profil.txt, host: winuae\harness\profil.py.
 FailAt 1000000
 Stack 1000000
@@ -30,10 +30,13 @@ Copy Work:SAVE9.ORG Work:SAVE9.GAM
 If NOT EXISTS Work:SAVE2.GRACZ
   Copy >NIL: Work:SAVE2.GAM Work:SAVE2.GRACZ
 EndIf
-Copy Work:SAVE2.B73 Work:SAVE2.GAM
+Copy Work:SAVE2.TST Work:SAVE2.GAM
 Echo >Work:autoinput.on "on"
-Copy Work:autoinput-tury.txt Work:autoinput.txt
+Copy Work:autoinput-dwie.txt Work:autoinput.txt
+Set REMOM_TEST_ZWIS 1
+Delete >NIL: Work:mom-zwis.log
 remom JENNY >Work:mom.log
+UnSet REMOM_TEST_ZWIS
 ; kod wyjscia programu zapamietany PRZED Why (Why ustawia wlasny $RC)
 Set PRC $RC
 Why >Work:mom.why

@@ -70,7 +70,7 @@
 #define AMIGA_CURSOR_DIM   16      /* MOM_DEF.h CURSOR_WIDTH / CURSOR_HEIGHT */
 #define AMIGA_WARP_GUARD_MS 100    /* jak Platform_Set_Warp_Guard() w SDL2 */
 
-#define AMIGA_TYTUL "Master of Magic 0.7.5"   /* pasek ekranu i okno; wersja portu (developer 2026-09-24) */
+#define AMIGA_TYTUL "Master of Magic 0.7.6"   /* pasek ekranu i okno; wersja portu (developer 2026-09-24) */
 
 #define AMIGA_GFX_DEFAULT  (-2)
 #define AMIGA_GFX_NONE     (-1)
@@ -227,6 +227,22 @@ static void Amiga_Drain_Events(int with_autoinput)
     AmigaGfxEvent ev;
     int ignore_mouse;
 
+    { extern volatile unsigned long amiga_puls; amiga_puls++; }  /* 0.7.6: puls dla straznika zwisu (amiga_Straznik.c) */
+    {   /* 0.7.6 test straznika: Set REMOM_TEST_ZWIS 1 -> po 25 s gry petla bez konca */
+        static int test_zwis = -1;
+        if(test_zwis < 0)
+        {
+            const char * z = getenv("REMOM_TEST_ZWIS");
+            test_zwis = (z != NULL && z[0] == '1') ? 1 : 0;
+        }
+        if(test_zwis == 1 && Platform_Get_Millies() > 25000ULL)
+        {
+            volatile unsigned long krec = 0;
+            printf("[amiga] REMOM_TEST_ZWIS: celowy zwis (petla bez konca)\n");
+            fflush(stdout);
+            for(;;) { krec++; }
+        }
+    }
     /* muzyka: dolanie buforow Pauli (amiga_Audio.c) */
     Amiga_Audio_Service();
 
