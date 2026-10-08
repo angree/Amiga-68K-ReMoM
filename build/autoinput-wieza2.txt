@@ -1,0 +1,24 @@
+# autoinput-wieza2.txt - SAVE2.B76: Myrror, ruch grupy z wiezy w gore, zapis do slotu 2 (stan ruchow po ruchu)
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 12000
+click 270 4
+wait 4000
+move 210 137
+wait 2000
+click 210 137
+wait 8000
+click 7 4
+wait 4000
+click 123 67
+wait 1500
+type wz
+wait 500
+click 141 178
+wait 6000
+snap wz-zapis
+quit

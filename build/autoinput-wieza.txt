@@ -1,0 +1,31 @@
+# autoinput-wieza.txt - SAVE2.B76: wczytanie, Plane -> Myrror, ruch grupy z wiezy (16,11) w gore,
+# zrzut na obu planach; potem powrot na Myrror i drugi ruch (jednostki z zapasem ruchu)
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 12000
+snap wz-start
+click 270 4
+wait 4000
+snap wz-myrror
+move 210 137
+wait 2000
+click 210 137
+wait 8000
+snap wz-ruch
+click 270 4
+wait 4000
+snap wz-arcanus
+click 270 4
+wait 4000
+snap wz-myrror2
+move 210 119
+wait 2000
+click 210 119
+wait 8000
+snap wz-ruch2
+wait 1000
+quit

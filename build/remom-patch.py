@@ -1505,6 +1505,37 @@ def latki_menu_amigi():
            "cityscape_houses_seg[(race_house_type * 10)]",
            "cityscape_houses_seg[(race_house_type * 5)]  /* AMIGA 0.7.3: bylo * 10 (offset bajtowy z asemblera) */", ile=2)
 
+    # 0.7.7 (gracz: grupa ruszona z wiezy na Myrror laduje na Arcanus; zapis
+    # gracza SAVE2.B76, tura 197, wieza (16,11)). Jednostka w wiezy ma
+    # in_tower = 1 i jest widoczna na obu planach, ale jej wp zostaje 0.
+    # Ekran mapy wpuszcza ruch, gdy wp == plan widoku ALBO jednostka jest w
+    # wiezy ALBO grupa ma Planar Travel - czyli zaklada, ze ruch stawia
+    # jednostke na planie widoku (map_p). Move_Units_Draw zmienial tylko
+    # wx/wy, wp nigdy. Odtworzone: build/run-remom-wieza (przed: grupa
+    # znika z Myrror i stoi na Arcanus nad wieza).
+    zamien("MoM/src/MainScr.c",
+           "        _UNITS[unit_array[itr_units]].wy = (int8_t)destination_y;\n",
+           "        _UNITS[unit_array[itr_units]].wy = (int8_t)destination_y;\n"
+           "        _UNITS[unit_array[itr_units]].wp = (int8_t)map_p;  /* AMIGA 0.7.7: wyjscie z wiezy na Myrror zostawialo jednostke na Arcanus */\n", ile=1)
+
+    # 0.7.8 (gracz: "nie da sie ruszyc jednostkami z grupy, ktorym zostaly
+    # punkty ruchu"). Move_Stack po ruchu liczy ruch grupy Stack_Moves() -
+    # minimum po WSZYSTKICH jednostkach pola, takze tych z moves2 == 0 - i
+    # przy 0 oznacza cala grupe Finished. Oryginal wola tu Stack_Moves_Active
+    # (XREF w MainScr.c: "j_Stack_Moves_Active() ... Move_Stack"), ktora
+    # liczy tylko aktywne (Select_Unit_Stack: moves2 > 0 i nie Finished).
+    # Odtworzone: build/run-remom-wieza (szybkie jednostki po ruchu o pole
+    # konczyly ture razem z wolnymi).
+    zamien("MoM/src/UNITSTK.c",
+           "        movement_points_available = Stack_Moves();\n",
+           "        movement_points_available = Stack_Moves_Active();  /* AMIGA 0.7.8: bylo Stack_Moves() - konczylo ture jednostkom z ruchem */\n", ile=2)
+
+    # 0.7.8: ruch grupy do logu (zgloszenia o ruchu: koszt, punkty, plan)
+    zamien("MoM/src/MainScr.c",
+           "        Total_Move_Cost += movepath_cost_array[itr_Path_Length];\n    }\n",
+           "        Total_Move_Cost += movepath_cost_array[itr_Path_Length];\n    }\n"
+           "    if(player_idx == _current_player_idx) { printf(\"[amiga] ruch: %d jedn. z (%d,%d) do (%d,%d) plan %d, kroki %d, koszt %d, punkty %d, koszt[0] %d\\n\", troop_count, unit_wx, unit_wy, destination_x, destination_y, map_p, path_length, Total_Move_Cost, movement_points, (int)movepath_cost_array[0]); fflush(stdout); }  /* AMIGA 0.7.8 */\n", ile=1)
+
     # 0.7.3 (gracz: sprzedany budynek nie znika i nie ma za niego zlota).
     # City_Sell_Building(city_idx, bldg_idx, gold), a ekran miasta wolal ja
     # z zamienionymi argumentami (bldg, city) - usuwal budynek nr <miasto>

@@ -1,0 +1,28 @@
+# autoinput-wieza3.txt - SAVE2.B76 (Arcanus): grupa z wiezy (16,11) w lewo na trawe (koszt 2):
+# wolne (moves2 2) koncza, szybkie (moves2 4) maja zostac z ruchem i dac sie ruszyc dalej
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 12000
+move 190 155
+wait 2000
+click 190 155
+wait 8000
+snap wz3-po1
+move 170 155
+wait 2000
+click 170 155
+wait 8000
+snap wz3-po2
+click 7 4
+wait 4000
+click 123 67
+wait 1500
+type wz
+wait 500
+click 141 178
+wait 6000
+quit
