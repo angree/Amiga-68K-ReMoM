@@ -1,0 +1,77 @@
+# autoinput-droga.txt - SAVE2.INZ: Next Turn (badanie: Shatter), inzynierowie z (12,11) buduja droge do (14,11), kolejne tury z Done dla pozostalych inzynierow
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 12000
+click 277 186
+wait 40000
+move 60 37
+wait 1500
+click 60 37
+wait 40000
+move 257 88
+wait 1200
+click 257 88
+wait 2500
+snap dr-jeden
+move 295 191
+wait 1200
+click 295 191
+wait 4000
+move 170 119
+wait 1200
+click 170 119
+wait 4000
+snap dr-cel
+move 260 186
+wait 1200
+click 260 186
+wait 6000
+snap dr-ok
+move 295 181
+wait 1200
+click 295 181
+wait 4000
+snap dr-patrol
+type n
+wait 30000
+click 290 40
+wait 3000
+type n
+wait 30000
+click 290 40
+wait 3000
+type n
+wait 30000
+click 290 40
+wait 3000
+type n
+wait 30000
+click 290 40
+wait 3000
+type n
+wait 30000
+click 290 40
+wait 3000
+type n
+wait 30000
+click 290 40
+wait 3000
+type n
+wait 30000
+click 290 40
+wait 3000
+type n
+wait 30000
+click 290 40
+wait 3000
+type n
+wait 30000
+click 290 40
+wait 3000
+snap dr-koniec
+wait 1500
+quit

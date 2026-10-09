@@ -1,0 +1,16 @@
+# autoinput-minimapa2.txt - wczytanie zapisu i zrzut (minimapa: miasta tylko na odkrytych polach)
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 12000
+snap mm-a
+click 290 30
+wait 4000
+snap mm-b
+click 270 45
+wait 4000
+snap mm-c
+quit

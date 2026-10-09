@@ -1536,6 +1536,67 @@ def latki_menu_amigi():
            "        Total_Move_Cost += movepath_cost_array[itr_Path_Length];\n    }\n"
            "    if(player_idx == _current_player_idx) { printf(\"[amiga] ruch: %d jedn. z (%d,%d) do (%d,%d) plan %d, kroki %d, koszt %d, punkty %d, koszt[0] %d\\n\", troop_count, unit_wx, unit_wy, destination_x, destination_y, map_p, path_length, Total_Move_Cost, movement_points, (int)movepath_cost_array[0]); fflush(stdout); }  /* AMIGA 0.7.8 */\n", ile=1)
 
+    # 0.7.9 diagnostyka zgloszen: budowa drogi (kazde wejscie Move_Units w
+    # trybie drogi) i klik na ekranie budowy miasta.
+    zamien("MoM/src/MainScr.c",
+           "    Current_Step = 1;\n\n    for(itr_troops = 0; itr_troops < troop_count; itr_troops++)\n    {\n\n        if(_UNITS[troops[itr_troops]].Rd_Constr_Left > 0)\n",
+           "    if(player_idx == _current_player_idx) { printf(\"[amiga] droga: tura %d, jedn. %d na (%d,%d), zostalo %d, sciezka %d, koszt[0] %d, punkty budowy %d, Finished %d\\n\", (int)_turn, (int)troops[0], unit_wx, unit_wy, (int)_UNITS[troops[0]].Rd_Constr_Left, path_length, (int)movepath_cost_array[0], construction_points, (int)_UNITS[troops[0]].Finished); fflush(stdout); }  /* AMIGA 0.7.9 */\n"
+           "    Current_Step = 1;\n\n    for(itr_troops = 0; itr_troops < troop_count; itr_troops++)\n    {\n\n        if(_UNITS[troops[itr_troops]].Rd_Constr_Left > 0)\n", ile=1)
+    zamien("MoM/src/ProdScr.c",
+           "        scanned_field = Scan_Input();\n",
+           "        scanned_field = Scan_Input();\n"
+           "        if(input_field_idx != 0) { printf(\"[amiga] budowa: pole %d, biezaca pozycja %d, pozycji %d (jedn. %d, dostepne %d), pola listy %d..%d, ok %d, cancel %d, mysz %d,%d\\n\", input_field_idx, current_item, build_table_field_count, G_CTY_ProdUnitCount, G_CTY_ProducableCount2, product_fields[0], product_fields[build_table_field_count - 1], production_screen_ok_button, production_screen_cancel_button, Pointer_X(), Pointer_Y()); fflush(stdout); }  /* AMIGA 0.7.9 */\n", ile=1)
+
+    # 0.7.9 diagnostyka: klik na ekranie Items (gracz: znikaja przedmioty
+    # zakladane bohaterom).
+    zamien("MoM/src/ItemScrn.c",
+           "        input_field_idx = Get_Input();\n        UU_scanned_field = Scan_Input();\n",
+           "        input_field_idx = Get_Input();\n        UU_scanned_field = Scan_Input();\n"
+           "        if(input_field_idx != 0) { printf(\"[amiga] items: pole %d, na kursorze %d (ze slotu %d), okno %d,%d, pola skarbca %d..%d, okno %d, wyjscie %d, mysz %d,%d\\n\", input_field_idx, m_cursor_item_idx, m_item_slot_idx, _item_window_start_x, _item_window_start_y, m_item_screen_vault_item_fields[0], m_item_screen_vault_item_fields[3], m_item_screen_window_field, m_item_screen_exit_field, Pointer_X(), Pointer_Y()); fflush(stdout); }  /* AMIGA 0.7.9 */\n", ile=1)
+
+    # 0.7.9 diagnostyka: pola okna pytania (Yes/No) - do logu przy kazdym kliku.
+    zamien("MoX/src/GENDRAW.c",
+           "        input_field_idx = abs(Get_Input());\n\n        if( (input_field_idx == ST_UNDEFINED) || (input_field_idx == confirmation_button_no) )",
+           "        input_field_idx = abs(Get_Input());\n"
+           "        if(input_field_idx != 0) { printf(\"[amiga] pytanie: pole %d (yes %d, no %d), okno %d,%d, wys. tekstu %d, yes (%d,%d)-(%d,%d), no (%d,%d)-(%d,%d), mysz %d,%d, przes. kursora %d\\n\", input_field_idx, confirmation_button_yes, confirmation_button_no, message_box_x, message_box_y, paragraph_height, p_fields[confirmation_button_yes].x1, p_fields[confirmation_button_yes].y1, p_fields[confirmation_button_yes].x2, p_fields[confirmation_button_yes].y2, p_fields[confirmation_button_no].x1, p_fields[confirmation_button_no].y1, p_fields[confirmation_button_no].x2, p_fields[confirmation_button_no].y2, Pointer_X(), Pointer_Y(), Get_Pointer_Offset()); fflush(stdout); }  /* AMIGA 0.7.9 */\n"
+           "\n        if( (input_field_idx == ST_UNDEFINED) || (input_field_idx == confirmation_button_no) )", ile=1)
+
+    # 0.7.9 (gracz: "czasami nie da sie wybrac jednostki z listy budowy,
+    # trzeba najpierw wybrac inna; glownie te na dole listy"). s_UV_List w
+    # oryginale to 40 rekordow po 38 B = 1520 B; w ReMoM to struktura tablic
+    # z picts[] typu SAMB_INT (long long, 8 B) = 1760 B, a przydzial zostal
+    # 1520. Ostatnie 240 B (koniec picts[] i cale helps[]) wychodzi za
+    # bufor: na ekranie budowy helps[n] laduje w product_fields[5 + n] -
+    # pozycja listy nr 6 i dalsze przestaja reagowac, gdy pokazywana
+    # jednostka ma zdolnosci. Odtworzone: build/run-remom-inz (Reading:
+    # Cavalry -> Engineers nie wchodzi, log product_fields[5] = 0xAE01).
+    # To samo w podgladzie jednostki i awansie bohatera.
+    for rel in ("MoM/src/ProdScr.c", "MoM/src/UnitView.c", "MoM/src/LVLMAKE.c"):
+        zamien(rel, "Near_Allocate_Next(1520)", "Near_Allocate_Next((int16_t)sizeof(struct s_UV_List))  /* AMIGA 0.7.9: bylo 1520, struktura ma 1760 */", ile=1)
+
+    # 0.7.9 (gracz: inzynierowie buduja droge w 1 ture na kazdym terenie).
+    # Set_Army_Road_Building liczyl tury dla pola (wx, wx) zamiast (wx, wy).
+    zamien("MoM/src/Roads.c",
+           "Turns_To_Build_Road(_UNITS[unit_idx].wx, _UNITS[unit_idx].wx, _map_plane)",
+           "Turns_To_Build_Road(_UNITS[unit_idx].wx, _UNITS[unit_idx].wy, _map_plane)  /* AMIGA 0.7.9: bylo (wx, wx) */", ile=1)
+
+    # 0.7.9: okienko "It will take N turns" liczylo sile budowy WSZYSTKICH
+    # inzynierow na polu, a buduja tylko zaznaczeni z ruchem
+    # (Active_Stack_Roadbuilders) - przy czesci grupy liczba tur sie nie
+    # zgadzala (run-remom-droga: okienko 3, naprawde 8). Ten sam warunek.
+    zamien("MoM/src/Roads.c",
+           "        if(_unit_type_table[_UNITS[_unit_stack[itr_stack].unit_idx].type].Construction > 0)\n",
+           "        if((_unit_type_table[_UNITS[_unit_stack[itr_stack].unit_idx].type].Construction > 0) && (_unit_stack[itr_stack].active != ST_FALSE) && (_UNITS[unit_idx].moves2 > 0))  /* AMIGA 0.7.9: tylko ci, ktorzy beda budowac */\n", ile=1)
+
+    # 0.7.9 (gracz: minimapa czasami pokazuje nieznane wrogie miasta, zmienia
+    # sie po kliknieciu w nia). Petla miast w Create_Reduced_Map_Picture
+    # sprawdzala odkrycie pola (minimap_square_x, minimap_square_y) - zmienne
+    # zostale po petli terenu, czyli prawy dolny rog widoku minimapy - zamiast
+    # pola miasta. Rog odkryty -> widac wszystkie miasta planu.
+    zamien("MoM/src/MainScr_Maps.c",
+           "            if(GET_SQUARE_EXPLORED(minimap_square_x, minimap_square_y, wp) != ST_FALSE)\n            {\n                city_minimap_x = city_world_x - minimap_start_x;",
+           "            if(GET_SQUARE_EXPLORED(city_world_x, city_world_y, wp) != ST_FALSE)  /* AMIGA 0.7.9: bylo pole z rogu minimapy */\n            {\n                city_minimap_x = city_world_x - minimap_start_x;", ile=1)
+
     # 0.7.3 (gracz: sprzedany budynek nie znika i nie ma za niego zlota).
     # City_Sell_Building(city_idx, bldg_idx, gold), a ekran miasta wolal ja
     # z zamienionymi argumentami (bldg, city) - usuwal budynek nr <miasto>

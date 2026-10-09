@@ -1,0 +1,34 @@
+# autoinput-bohater.txt - SAVE2.BOH: wejscie do lokacji z bohaterka, bitwa AUTO, lupy, zapis do slotu 2
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+snap l-mapa
+click 50 137
+wait 4000
+snap l-pytanie
+click 200 152
+wait 6000
+snap l-walka
+type a
+wait 150000
+snap l-po-walce
+key return
+wait 4000
+snap l-lupy
+key return
+wait 3000
+snap l-koniec
+click 7 4
+wait 5000
+click 123 67
+wait 2000
+type bo
+wait 500
+click 141 178
+wait 8000
+snap l-zapis
+quit

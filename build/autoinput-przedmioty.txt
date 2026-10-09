@@ -1,0 +1,82 @@
+# autoinput-przedmioty.txt - SAVE2.TST: Armies -> Items, przedmiot 2 ze skarbca (broszka) na 3. slot Shalli, OK, tura (Patrol), zapis do slotu 2
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 12000
+click 113 8
+wait 6000
+click 293 170
+wait 9000
+snap pr-items
+move 100 181
+wait 3000
+click 100 181
+wait 2500
+snap pr-podniesiony
+move 274 39
+wait 3000
+click 274 39
+wait 4000
+snap pr-pytanie
+move 201 121
+wait 2000
+click 201 121
+wait 4000
+snap pr-zalozony
+move 265 184
+wait 2000
+click 265 184
+wait 5000
+snap pr-armie
+move 292 189
+wait 2000
+click 292 189
+wait 6000
+snap pr-mapa
+click 7 4
+wait 5000
+click 123 67
+wait 2000
+type pr
+wait 500
+click 141 178
+wait 8000
+snap pr-zapis
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 288 180
+wait 2500
+click 261 193
+wait 150000
+snap pr-tura
+type a
+wait 120000
+key return
+wait 4000
+key return
+wait 4000
+snap pr-po-turze
+quit

@@ -1,0 +1,45 @@
+# autoinput-inz.txt - SAVE2.INZ: lista budowy (Cavalry -> Engineers), potem Next Turn i rozpoznanie inzynierow
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 12000
+click 140 4
+wait 5000
+click 60 26
+wait 5000
+move 264 193
+wait 1500
+click 264 193
+wait 5000
+move 277 65
+wait 1200
+click 277 65
+wait 2500
+move 277 79
+wait 1200
+click 277 79
+wait 2500
+snap bud-inz
+move 277 107
+wait 1200
+click 277 107
+wait 2500
+move 277 93
+wait 1200
+click 277 93
+wait 2500
+snap bud-set
+key esc
+wait 3000
+key esc
+wait 4000
+key esc
+wait 3000
+snap inz-przed
+click 277 186
+wait 25000
+snap inz-tura
+quit
