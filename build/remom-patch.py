@@ -1905,6 +1905,60 @@ def latki_bez_float():
                "                    Allocate_Reduced_Map();\n                    item_idx = Make_Item(1, Amiga_Spellranks(player_idx), " + wartosc + ");\n                    _players[player_idx].casting_cost_original = _ITEMS[item_idx].cost;\n                    _players[player_idx].casting_cost_remaining = ((_players[player_idx].casting_cost_remaining * var_8) / 100);\n                    memcpy(&_ITEMS[(136 - player_idx)], &_ITEMS[item_idx], sizeof(struct s_ITEM));\n                    Remove_Item(item_idx);\n",
                "                    Allocate_Reduced_Map();\n                    /* AMIGA 0.8.0: bez losowego przedmiotu i bez * var_8 (= 0) - gracz tworzy _ITEMS[MAX_ITEM_COUNT] z ekranu */\n                    printf(\"[amiga] przedmiot gracza: koszt %d (oryg. %d)\\n\", (int)_players[player_idx].casting_cost_remaining, (int)_players[player_idx].casting_cost_original); fflush(stdout);\n", ile=1)
 
+    # 0.8.1 (gracz: "znowu sie popsula paleta" - po Continue mapa przez
+    # chwile w zlej palecie). Log 0.8.0: Continue trwa ~10 s, w srodku pelna
+    # klatka (t=15560), a paleta gry dopiero w Main (t=20600). Continue
+    # w ReMoM pomija to, co robi Load_Screen przed Loaded_Game_Update:
+    # Fade_Out, czyszczenie stron i Load_Palette(0) (WZD Continue tez laduje
+    # palete 0). Loaded_Game_Update rysuje mape (ruchy jednostek z rozkazem),
+    # wiec szla ona z paleta menu. Teraz Continue robi to samo co Load.
+    zamien("MoM/src/MOM_SCR.c",
+           "                /* HACK */  Load_WZD_Resources();\n                Load_SAVE_GAM(8);\n",
+           "                Fade_Out();  /* AMIGA 0.8.1: jak Load_Screen - bez rysowania w palecie menu */\n"
+           "                /* HACK */  Load_WZD_Resources();\n                Load_SAVE_GAM(8);\n", ile=1)
+    zamien("MoM/src/MOM_SCR.c",
+           "                Clear_Fields();\n                Loaded_Game_Update();\n",
+           "                Clear_Fields();\n"
+           "                /* AMIGA 0.8.1: jak Load_Screen przed Loaded_Game_Update */\n"
+           "                _page_flip_effect = pfe_TogglePagesFadeIn;\n"
+           "                Fill(SCREEN_XMIN, SCREEN_YMIN, SCREEN_XMAX, SCREEN_YMAX, ST_TRANSPARENT);\n"
+           "                Set_Page_On();\n"
+           "                Fill(SCREEN_XMIN, SCREEN_YMIN, SCREEN_XMAX, SCREEN_YMAX, ST_TRANSPARENT);\n"
+           "                Set_Page_Off();\n"
+           "                Load_Palette(0, ST_UNDEFINED, ST_NULL);\n"
+           "                Set_Palette_Changes(0, 255);\n"
+           "                Calculate_Remap_Colors();\n"
+           "                Cycle_Palette_Color(198, 40, 0, 0, 63, 0, 0, 1);\n"
+           "                Loaded_Game_Update();\n", ile=1)
+
+    # 0.8.1 (gracz: "okrety gubia zaloge zostawiajac ja po drodze").
+    # Ruch po rozkazie (Stack_Move_To, kolejne tury) sklada stos w
+    # Build_RoadBuilder_Stack. ReMoM ma tam "boatriders[i] != unit_idx" -
+    # dodaje kazda jednostke, ktora NIE jest kolejnym pasazerem: statek drugi
+    # raz (i liczy go jako pasazera), a gdy licznik dojdzie do pojemnosci,
+    # reszta pasazerow zostaje na wodzie. Build_Moveable_Stack (zwykly ruch
+    # mysza) ma "==" i bohaterow poza limitem - tak samo tutaj. Plus limit
+    # tablicy troops (MAX_STACK).
+    zamien("MoM/src/UNITSTK.c",
+           "                    if((boatriders[boatrider_idx] != unit_idx) && (passenger_count < transport_capacity))\n",
+           "                    if((boatriders[boatrider_idx] == unit_idx) && ((passenger_count < transport_capacity) || (_UNITS[unit_idx].type <= ut_Chosen)) && (l_troop_count < MAX_STACK))  /* AMIGA 0.8.1: bylo != (statek liczony jako pasazer, zaloga zostawala) */\n", ile=1)
+
+    # 0.8.1 (gracz: do wiezy mozna wejsc z jednego planu, gdy na drugim stoi
+    # w niej wrog). All_Units_In_Towers (co ture, Next_Turn) ustawia in_tower
+    # w petli po wiezach z galezia else - kazda nastepna wieza zeruje flage
+    # z powrotem, wiec zostaje tylko przy ostatniej wiezy (nr 5). W zapisie
+    # gracza: wieza (33,11), jego 3 jedn. na planie 1 i jedn. gracza 2 na
+    # planie 0, wszystkie in_tower 0 - Enemy_Army_At_Square nie widzi wroga
+    # z drugiego planu. Bez else; dodatkowo raz po wczytaniu gry, zeby stary
+    # zapis od razu mial dobre flagi.
+    zamien("MoM/src/WZD_o059.c",
+           "            {\n                _UNITS[itr_units].in_tower = ST_TRUE;\n            }\n            else\n            {\n                _UNITS[itr_units].in_tower = ST_FALSE;\n            }\n",
+           "            {\n                _UNITS[itr_units].in_tower = ST_TRUE;\n            }\n            /* AMIGA 0.8.1: bez else - nastepne wieze zerowaly flage */\n", ile=1)
+    zamien("MoM/src/LoadScr.c",
+           "    Delete_Dead_Units();\n",
+           "    Delete_Dead_Units();\n"
+           "    { extern void All_Units_In_Towers(void); int amiga_w = 0; int amiga_i; All_Units_In_Towers(); for(amiga_i = 0; amiga_i < _units; amiga_i++) { if((_UNITS[amiga_i].in_tower == ST_TRUE) && (_UNITS[amiga_i].owner_idx != ST_UNDEFINED)) { amiga_w++; } } printf(\"[amiga] wieze: %d jedn. w wiezach po wczytaniu (Planar Seal %d)\\n\", amiga_w, (int)Check_Planar_Seal()); fflush(stdout); }  /* AMIGA 0.8.1: flagi wiez od razu po wczytaniu */\n", ile=1)
+
 
 def main():
     global ROOT

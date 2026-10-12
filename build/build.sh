@@ -96,7 +96,15 @@ CPU="-mcpu=68020 -msoft-float"
 # 13 obrotow, potem 4 mld). Dekodowanie klatek FLIC (Add_Picture_To_Bitmap)
 # niszczylo naglowek bitmapy i wieszalo HeMoM. Odtworzone sonda probe/flic:
 # -O0 czysto, -O1 i -O2 zle, -O2 z tymi dwiema flagami czysto.
-FIX="-fno-peephole2 -fno-tree-scev-cprop -fno-branch-count-reg"
+#
+# -fbbb=abcefhlmnprsz0: defekt toolchainu nr 9 (2026-10-12, 0.8.1) - wlasny
+# optymalizator bebbo, krok "i" (post-inkrementacja adresow), zamienia
+# "cmp.b (a2)" na "cmp.b (a2)+", ale NIE poprawia nastepnego "1(a2)" - drugie
+# pole struktury czytane z przesunieciem o bajt. All_Units_In_Towers
+# porownywalo wy jednostki z owner_idx wiezy: zadna jednostka nigdy nie byla
+# "w wiezy" (gracz: wejscie do wiezy mimo wroga na drugim planie). Domyslne
+# -fbbb=+ to abcefhilmnprsz0 - tu wszystko bez "i".
+FIX="-fno-peephole2 -fno-tree-scev-cprop -fno-branch-count-reg -fbbb=abcefhlmnprsz0"
 OPT="-O2 $FIX"
 COMMON="$CPU -noixemul -fomit-frame-pointer"
 # NO_SOUND_LIBRARY: upstream wlacza go, gdy nie ma SDL_mixer. Dzwiek przez
