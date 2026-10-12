@@ -1467,7 +1467,7 @@ def latki_menu_amigi():
     zamien("MoM/src/NEXTTURN.c",
            "    RNG_AI_Turn_Seed = Get_Random_Seed();\n",
            "    RNG_AI_Turn_Seed = Get_Random_Seed();\n"
-           "    printf(\"[amiga] Next Turn: tura %d przeliczona, t=%lu ms\\n\", (int)_turn, (unsigned long)Platform_Get_Millies()); fflush(stdout); amiga_faza = \"po turze\";  /* AMIGA 0.7.6 */\n", ile=1)
+           "    { extern uint32_t Pool_Bytes_Used(void); printf(\"[amiga] Next Turn: tura %d przeliczona, t=%lu ms, pula %lu KB\\n\", (int)_turn, (unsigned long)Platform_Get_Millies(), (unsigned long)(Pool_Bytes_Used() / 1024UL)); fflush(stdout); } amiga_faza = \"po turze\";  /* AMIGA 0.7.6 */\n", ile=1)
 
     # 0.7.5 (gracz: "ciagle trafiam na Klackonow jako najblizsze neutralne
     # miasto - czy rasy sa losowe?"): rasy miast nowej gry do logu. Rasa
@@ -1596,6 +1596,69 @@ def latki_menu_amigi():
     zamien("MoM/src/MainScr_Maps.c",
            "            if(GET_SQUARE_EXPLORED(minimap_square_x, minimap_square_y, wp) != ST_FALSE)\n            {\n                city_minimap_x = city_world_x - minimap_start_x;",
            "            if(GET_SQUARE_EXPLORED(city_world_x, city_world_y, wp) != ST_FALSE)  /* AMIGA 0.7.9: bylo pole z rogu minimapy */\n            {\n                city_minimap_x = city_world_x - minimap_start_x;", ile=1)
+
+    # 0.7.10 (gracz: bohater po awansie stracil wszystkie przedmioty).
+    # Diagnostyka: przedmioty bohatera przed i po oknie awansu.
+    zamien("MoM/src/NEXTTURN.c",
+           "                        Hero_LevelUp_Popup(itr_units);\n",
+           "                        printf(\"[amiga] awans: jedn. %d slot %d przedmioty przed %d %d %d\\n\", (int)itr_units, (int)hero_slot, (int)_players[HUMAN_PLAYER_IDX].Heroes[hero_slot].Items[0], (int)_players[HUMAN_PLAYER_IDX].Heroes[hero_slot].Items[1], (int)_players[HUMAN_PLAYER_IDX].Heroes[hero_slot].Items[2]);\n"
+           "                        Hero_LevelUp_Popup(itr_units);\n"
+           "                        printf(\"[amiga] awans: przedmioty po %d %d %d\\n\", (int)_players[HUMAN_PLAYER_IDX].Heroes[hero_slot].Items[0], (int)_players[HUMAN_PLAYER_IDX].Heroes[hero_slot].Items[1], (int)_players[HUMAN_PLAYER_IDX].Heroes[hero_slot].Items[2]); fflush(stdout);\n", ile=1)
+
+    # 0.7.10 (gracz: okienko awansu bohatera za waskie - widac tylko zmiany
+    # po awansie, bez cech postaci). Hero_LevelUp_Popup_Draw liczyl dol okna
+    # jako base_y + 49 + (n+1)/2 - bez wysokosci wiersza 17 (ta sama petla
+    # w Hero_LevelUp_Popup ma "* 17"). Okno ucinalo liste cech.
+    zamien("MoM/src/LVLMAKE.c",
+           "y = (lvlmake_base_y + 49 + ((uv_specials_list_count + 1) / 2));",
+           "y = (lvlmake_base_y + 49 + (((uv_specials_list_count + 1) / 2) * 17));  /* AMIGA 0.7.10: brakowalo * 17 */", ile=1)
+
+    # 0.7.10 (gracz: bohater stracil wszystkie przedmioty; zapis gracza:
+    # Rakir w slocie 0 ma puste sloty, a jego przedmioty 3 i 7 nadal sa
+    # aktywne w _ITEMS - nikt ich nie zwolnil). WIZ_HireHero czysci sloty
+    # przedmiotow nowego bohatera u _players[HUMAN_PLAYER_IDX] zamiast
+    # _players[player_idx]: gdy komputer zatrudnia bohatera (AI_Accept_Hero,
+    # Summon Hero/Champion) do swojego slotu N, bohater gracza w slocie N
+    # traci przedmioty. W logu kazde zatrudnienie.
+    zamien("MoM/src/Spells132.c",
+           "        _players[HUMAN_PLAYER_IDX].Heroes[hero_slot_idx].Items[itr] = ST_UNDEFINED;\n",
+           "        _players[player_idx].Heroes[hero_slot_idx].Items[itr] = ST_UNDEFINED;  /* AMIGA 0.7.10: bylo HUMAN_PLAYER_IDX - czyscilo przedmioty bohatera gracza */\n", ile=1)
+    zamien("MoM/src/Spells132.c",
+           "    _players[player_idx].Heroes[hero_slot_idx].unit_idx = (_units - 1);\n",
+           "    _players[player_idx].Heroes[hero_slot_idx].unit_idx = (_units - 1);\n"
+           "    printf(\"[amiga] najem bohatera: gracz %d slot %d typ %d jedn. %d\\n\", (int)player_idx, (int)hero_slot_idx, (int)unit_type_idx, (int)(_units - 1)); fflush(stdout);  /* AMIGA 0.7.10 */\n", ile=1)
+
+    # 0.7.10 (wywrotka po Next Turn w zapisie gracza, tura 299, takze 0.7.9:
+    # CPU TRAP 6 na PC 0x10). Build_Moveable_Stack przy statku z pasazerami:
+    # druga petla miala dodac jednostki, ktore NIE potrzebuja miejsca na
+    # statku (latajace, plywajace - tak jest w Build_RoadBuilder_Stack:
+    # "== ST_TRUE ||"), a ReMoM ma warunek odwrocony ("== ST_FALSE &&") -
+    # dopisywala ponownie pasazerow. Lista przekraczala MAX_STACK (9) i
+    # nadpisywala stos Move_Stack, w tym zapisany a5 Main_Screen (wartosc
+    # 0x001E0020 = jednostki 30 i 32); wywrotka przy wyjsciu z ekranu mapy.
+    # Zmierzone straznikiem a5 (C:/temp/amiga_mom/diag-0710-a5.py.txt).
+    # Druga galaz (bez pasazerow) brala _UNITS[itr_stack] zamiast jednostki
+    # ze stosu. Dodatkowo limit MAX_STACK przy dopisywaniu.
+    zamien("MoM/src/UNITSTK.c",
+           "                        (Unit_Has_AirTravel_Item(_unit_stack[itr_stack].unit_idx) == ST_FALSE) &&\n                        (Unit_Has_WaterTravel_Item(_unit_stack[itr_stack].unit_idx) == ST_FALSE) &&\n                        (Unit_Has_Swimming(_unit_stack[itr_stack].unit_idx) == ST_FALSE) &&\n                        (Unit_Has_WindWalking(_unit_stack[itr_stack].unit_idx) == ST_FALSE) &&\n                        (Unit_Has_AirTravel(_unit_stack[itr_stack].unit_idx) == ST_FALSE)\n",
+           "                        (Unit_Has_AirTravel_Item(_unit_stack[itr_stack].unit_idx) == ST_TRUE) ||  /* AMIGA 0.7.10: bylo == ST_FALSE && (jak w Build_RoadBuilder_Stack) */\n                        (Unit_Has_WaterTravel_Item(_unit_stack[itr_stack].unit_idx) == ST_TRUE) ||\n                        (Unit_Has_Swimming(_unit_stack[itr_stack].unit_idx) == ST_TRUE) ||\n                        (Unit_Has_WindWalking(_unit_stack[itr_stack].unit_idx) == ST_TRUE) ||\n                        (Unit_Has_AirTravel(_unit_stack[itr_stack].unit_idx) == ST_TRUE)\n", ile=1)
+    zamien("MoM/src/UNITSTK.c",
+           "                        if(_UNITS[_unit_stack[itr_stack].unit_idx].Status != us_GOTO)\n                        {\n                            troops[l_troop_count] = _unit_stack[itr_stack].unit_idx;\n",
+           "                        if((_UNITS[_unit_stack[itr_stack].unit_idx].Status != us_GOTO) && (l_troop_count < MAX_STACK))  /* AMIGA 0.7.10: limit tablicy */\n                        {\n                            troops[l_troop_count] = _unit_stack[itr_stack].unit_idx;\n", ile=1)
+    zamien("MoM/src/UNITSTK.c",
+           "                        if((_UNITS[itr_stack].Status != us_GOTO) && (_unit_type_table[_UNITS[itr_stack].type].Transport < 1))\n",
+           "                        if((_UNITS[_unit_stack[itr_stack].unit_idx].Status != us_GOTO) && (_unit_type_table[_UNITS[_unit_stack[itr_stack].unit_idx].type].Transport < 1) && (l_troop_count < MAX_STACK))  /* AMIGA 0.7.10: bylo _UNITS[itr_stack] */\n", ile=1)
+
+    # 0.7.10 (wywrotka "Insufficient memory" po ~30 turach: Allocation_Error 1,
+    # 13950 blokow). Open_File_Animation__HACK (FLIC_Draw.c) wczytywal animacje
+    # przez LBX_Load - nowy kawalek puli przy kazdym wywolaniu, nigdy
+    # zwolniony. Raport na koniec tury (scroll 2) to 218 KB co ture, do tego
+    # spellbook (book), podboj, animacje czarow. Oryginal ladowal do stalego
+    # bufora (VGAFILEH). Teraz jeden bufor z puli, powiekszany tylko dla
+    # wiekszej animacji; LBX_Reload jak w oryginale. Zmierzone logiem
+    # Allocate_Space/LBX_Load (run-remom-najem: scroll 2 co ture).
+    zamien("MoX/src/LBX_Load.c", "SAMB_ptr LBX_Reload(char * lbx_name, int16_t entry_num, SAMB_ptr SAMB_head)\n", "uint32_t Amiga_LBX_Rozmiar_Wpisu(char * lbx_name, int16_t entry_num)  /* AMIGA 0.7.10: dlugosc wpisu z naglowka LBX (osobny uchwyt) */\n{\n    char nazwa[LEN_FILE_NAME];\n    unsigned char b[8];\n    FILE * f;\n    uint32_t a, z;\n    stu_strcpy(nazwa, lbx_name);\n    stu_strcat(nazwa, \".LBX\");\n    f = STU_GRAF_Open_Asset(nazwa, \"rb\");\n    if(f == NULL) { return 0; }\n    if((fseek(f, 8L + ((long)entry_num * 4L), 0) != 0) || (fread(b, 1, 8, f) != 8)) { fclose(f); return 0; }\n    fclose(f);\n    a = (uint32_t)b[0] | ((uint32_t)b[1] << 8) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);\n    z = (uint32_t)b[4] | ((uint32_t)b[5] << 8) | ((uint32_t)b[6] << 16) | ((uint32_t)b[7] << 24);\n    return (z > a) ? (z - a) : 0;\n}\n\nSAMB_ptr LBX_Reload(char * lbx_name, int16_t entry_num, SAMB_ptr SAMB_head)\n", ile=1)
+    zamien("MoX/src/FLIC_Draw.c", "    file_animation_header = LBX_Load(file_animation_file_name, file_animation_entry_num);\n", "    {   /* AMIGA 0.7.10: jeden bufor wielokrotnego uzytku zamiast LBX_Load (wyciek puli co ture) */\n        extern SAMB_ptr Allocate_Space(uint16_t size);\n        extern uint32_t Amiga_LBX_Rozmiar_Wpisu(char * lbx_name, int16_t entry_num);\n        static SAMB_ptr amiga_anim = NULL;\n        static uint32_t amiga_anim_par = 0;\n        uint32_t amiga_dl = Amiga_LBX_Rozmiar_Wpisu(file_animation_file_name, file_animation_entry_num);\n        uint32_t amiga_par = 1 + (amiga_dl / 16);\n        if((amiga_dl == 0) || (amiga_par > 60000UL))\n        {\n            file_animation_header = LBX_Load(file_animation_file_name, file_animation_entry_num);\n        }\n        else\n        {\n            if((amiga_anim == NULL) || ((amiga_par + 1) > amiga_anim_par))\n            {\n                amiga_anim_par = amiga_par + 1;\n                amiga_anim = Allocate_Space((uint16_t)amiga_anim_par);\n            }\n            file_animation_header = LBX_Reload(file_animation_file_name, file_animation_entry_num, amiga_anim);\n        }\n    }\n", ile=1)
 
     # 0.7.3 (gracz: sprzedany budynek nie znika i nie ma za niego zlota).
     # City_Sell_Building(city_idx, bldg_idx, gold), a ekran miasta wolal ja

@@ -1,0 +1,31 @@
+# autoinput-awans.txt - SAVE2.LVL: Next Turn, awans Rakira, zapis do slotu 2
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+snap aw-mapa
+click 261 193
+wait 40000
+snap aw-okno
+key esc
+wait 5000
+snap aw-po1
+key return
+wait 4000
+snap aw-po2
+key return
+wait 4000
+snap aw-po3
+click 7 4
+wait 5000
+click 123 67
+wait 2000
+type aw
+wait 500
+click 141 178
+wait 8000
+snap aw-zapis
+quit

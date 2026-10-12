@@ -1,0 +1,444 @@
+# autoinput-najem.txt - SAVE2.NAJ: kolejne tury (klik w Patrol/Next Turn, Yes na pytanie o glod, Esc na komunikaty i ekran miasta), zapis do slotu 2
+wait 4000
+click 160 143
+wait 3000
+click 123 67
+wait 1500
+click 100 177
+wait 10000
+snap nj-mapa
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+snap nj-20
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+snap nj-40
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+snap nj-60
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+click 288 180
+wait 4000
+click 202 132
+wait 2000
+key esc
+wait 2000
+key esc
+wait 3000
+click 7 4
+wait 5000
+click 123 67
+wait 2000
+type nj
+wait 500
+click 141 178
+wait 8000
+snap nj-zapis
+quit
