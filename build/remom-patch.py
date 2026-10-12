@@ -1856,6 +1856,55 @@ def latki_bez_float():
     #    jego symbol globalny (Simulate_World_Map_Generation) nie jest
     #    uzywany przez zaden inny obiekt (nm -u, 2026-09-17).
 
+    # 0.8.0 (gracz: gra sie zawiesza po kliknieciu czarem w minimape,
+    # Transmute, Wall of Stone). Spell_Casting_Screen__WIP ustawia
+    # screen_changed po kliknieciu minimapy/planu/okien, ale nigdy go nie
+    # zeruje (Main_Screen zeruje na koncu kazdego obiegu petli). Po pierwszym
+    # takim kliknieciu petla przestaje rysowac ekran - zostaje tylko rzadkie
+    # rysowanie automatyczne (0.2 fps, mapa stoi). Zmierzone logiem:
+    # jedno rysowanie na 8 s po kliknieciu (run-remom-czar).
+    zamien("MoM/src/SCastScr.c",
+           "            Spell_Casting_Screen_Draw();\n            PageFlip_FX();\n            Release_Time(1);\n        }\n\n    }\n",
+           "            Spell_Casting_Screen_Draw();\n            PageFlip_FX();\n            Release_Time(1);\n        }\n\n        screen_changed = ST_FALSE;  /* AMIGA 0.8.0: jak w Main_Screen - bez tego ekran celu przestawal sie rysowac */\n\n    }\n", ile=1)
+
+    # 0.8.0 (gracz: Enchant Item, wyglad przedmiotu strzalka w lewo z Axe
+    # przechodzi na Mace, Bow na Mace, Misc na Bow ... - powinno na ostatni
+    # wyglad tej samej klasy). Przy cofnieciu ponizej poczatku zakresu
+    # ReMoM wpisuje sama liczbe wygladow (count) zamiast start + count - 1.
+    zamien("MoM/src/ItemMake.c",
+           "                m_itemmake_item_icon_idx = Item_Type_Icon_Ranges[weapon_type_num].count;\n",
+           "                m_itemmake_item_icon_idx = (Item_Type_Icon_Ranges[weapon_type_num].start + Item_Type_Icon_Ranges[weapon_type_num].count - 1);  /* AMIGA 0.8.0: bylo samo .count */\n", ile=1)
+
+    # 0.8.0 (gracz: Enchant Item - OK nic nie daje, czar sie nie zaczyna).
+    # Cast_Spell_Overland_Do dla gracza po Item_Make_Screen wykonuje tez
+    # sciezke komputera: losuje przedmiot (Make_Item) i mnozy koszt przez
+    # var_8, ktore nigdy nie jest ustawiane (0) - koszt 0, wiec czar od razu
+    # zostaje anulowany (casting_spell_idx = spl_NONE). Gracz konczy czar
+    # z _ITEMS[MAX_ITEM_COUNT] (Cast_Spell_Overland: Activate_Item(MAX_ITEM_COUNT)),
+    # a XREF Make_Item wymienia z Cast_Spell_Overland_Do tylko dwa wywolania
+    # (Power 1/1000 i 2/30000) - galaz komputera. Dla gracza zostaje koszt
+    # z ekranu (juz pomniejszony o Casting_Cost_Reduction). Zmierzone:
+    # run-remom-czar, po OK casting_spell_idx 0, mana bez zmian.
+    # 0.8.0 (gracz: kara Nature's Wrath trafia wrogow prawie co ture;
+    # w zapisie gracza NIKT nie ma Nature's Wrath - Globals[NATURES_WRATH]
+    # = 0 u wszystkich). Cast_Spell_Overland szuka wlasciciela Nature's Wrath
+    # w MultiPurpose_Local_Var, ale zeruje ja na -1 tylko gdy czar sie
+    # udal (cast_can_continue). Gdy sie nie udal (brak celu, kontra,
+    # anulowanie), zostaje stara wartosc (0 z inicjalizacji albo ST_TRUE/
+    # ST_FALSE z petli wyboru celu) >= 0 - kazdy nieudany czar Chaosu lub
+    # Smierci wywolywal Call_Forth_The_Force_Of_Nature. W logu kazde wywolanie.
+    zamien("MoM/src/OverSpel.c",
+           "    if(cast_can_continue == ST_TRUE)\n    {\n        MultiPurpose_Local_Var = ST_UNDEFINED;\n",
+           "    MultiPurpose_Local_Var = ST_UNDEFINED;  /* AMIGA 0.8.0: bez tego zostawala wartosc z wczesniejszego uzycia (>= 0) */\n    if(cast_can_continue == ST_TRUE)\n    {\n        MultiPurpose_Local_Var = ST_UNDEFINED;\n", ile=1)
+    zamien("MoM/src/OverSpel.c",
+           "            g_ai_recompute_needed = ST_TRUE;\n            Call_Forth_The_Force_Of_Nature(player_idx);\n",
+           "            g_ai_recompute_needed = ST_TRUE;\n            printf(\"[amiga] Nature's Wrath: gracz %d czar %d, wlasciciel gracz %d\\n\", (int)player_idx, (int)spell_idx, (int)MultiPurpose_Local_Var); fflush(stdout);  /* AMIGA 0.8.0 */\n            Call_Forth_The_Force_Of_Nature(player_idx);\n", ile=1)
+
+    for wartosc in ("1000", "30000"):
+        zamien("MoM/src/SBookScr.c",
+               "                    Allocate_Reduced_Map();\n                    item_idx = Make_Item(1, Amiga_Spellranks(player_idx), " + wartosc + ");\n                    _players[player_idx].casting_cost_original = _ITEMS[item_idx].cost;\n                    _players[player_idx].casting_cost_remaining = ((_players[player_idx].casting_cost_remaining * var_8) / 100);\n                    memcpy(&_ITEMS[(136 - player_idx)], &_ITEMS[item_idx], sizeof(struct s_ITEM));\n                    Remove_Item(item_idx);\n",
+               "                    Allocate_Reduced_Map();\n                    /* AMIGA 0.8.0: bez losowego przedmiotu i bez * var_8 (= 0) - gracz tworzy _ITEMS[MAX_ITEM_COUNT] z ekranu */\n                    printf(\"[amiga] przedmiot gracza: koszt %d (oryg. %d)\\n\", (int)_players[player_idx].casting_cost_remaining, (int)_players[player_idx].casting_cost_original); fflush(stdout);\n", ile=1)
+
 
 def main():
     global ROOT

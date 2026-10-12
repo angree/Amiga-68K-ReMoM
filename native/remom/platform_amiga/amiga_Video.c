@@ -49,6 +49,7 @@ static uint8_t amiga_shadow_rgb[256 * 3];
 static int amiga_shadow_valid = 0;
 
 static int amiga_full_present = 1;
+static unsigned long amiga_pelna_t = 0;  /* czas ostatniej klatki >= 150 wierszy (diagnoza palety) */
 
 static uint8_t Amiga_Expand8(uint8_t v)
 {
@@ -153,6 +154,16 @@ static void Amiga_Sync_Palette(void)
     }
     amigagfx_set_palette(rgb, lo, hi - lo + 1);
     amiga_shadow_valid = 1;
+    /* 0.8.0 diagnoza (gracz: po wczytaniu gry czasem przez chwile mapa ze
+       zla paleta): duza zmiana palety i ile wczesniej poszla ostatnia
+       prawie pelna klatka - pokazuje, czy obraz wyprzedzil palete. */
+    if((hi - lo) >= 63)
+    {
+        unsigned long teraz = (unsigned long)Platform_Get_Millies();
+        printf("[amiga] paleta: %d-%d t=%lu, ostatnia pelna klatka t=%lu\n",
+               lo, hi, teraz, amiga_pelna_t);
+        fflush(stdout);
+    }
 }
 
 /* wymiary obszaru, ktory da sie przepisac: min(ekran gry, obszar ekranu) */
@@ -425,6 +436,10 @@ void Platform_Video_Update(void)
     if(y1 >= 0)
     {
         amigagfx_blit(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+        if((y1 - y0) >= 150)
+        {
+            amiga_pelna_t = (unsigned long)Platform_Get_Millies();
+        }
     }
 
     Perf_Live_Note_Present();
