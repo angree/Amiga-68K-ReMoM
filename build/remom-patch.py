@@ -1959,6 +1959,118 @@ def latki_bez_float():
            "    Delete_Dead_Units();\n"
            "    { extern void All_Units_In_Towers(void); int amiga_w = 0; int amiga_i; All_Units_In_Towers(); for(amiga_i = 0; amiga_i < _units; amiga_i++) { if((_UNITS[amiga_i].in_tower == ST_TRUE) && (_UNITS[amiga_i].owner_idx != ST_UNDEFINED)) { amiga_w++; } } printf(\"[amiga] wieze: %d jedn. w wiezach po wczytaniu (Planar Seal %d)\\n\", amiga_w, (int)Check_Planar_Seal()); fflush(stdout); }  /* AMIGA 0.8.1: flagi wiez od razu po wczytaniu */\n", ile=1)
 
+    # 0.8.2 (gracz: "statek zostawia jednostki za soba", wiki MoM: Transport).
+    # Wejscie na pole ze statkiem: Eval_Move_Path i Update_MovePathMap licza
+    # chetnych do miejsc. ReMoM ma tam trzy bledy, wszystkie w oryginalnym
+    # tekscie upstreamu (a9cc082 i aktualny master):
+    #  1) "type > ut_Chosen" zwalnia z miejsca kazda ZWYKLA jednostke, a
+    #     liczy tylko bohaterow - odwrotnie niz wszedzie indziej (Build_*_Stack:
+    #     bohater nie zajmuje miejsca). Skutek: na statek wchodzi dowolnie
+    #     wielu, a przy wyplynieciu zostaja ci ponad pojemnosc (zapis gracza:
+    #     Warship + 5 piechoty, dwa oddzialy paladynow zostaly).
+    #  2) druga petla (przenoszeni) czyta Units[] (stojacy na polu) zamiast
+    #     troops[] (idacy).
+    #  3) "- 1" odejmuje jeden statek, a statki licza sie jako pasazerowie -
+    #     znany blad oryginalu z wiki: 2 Triremy (2+2) biora 3, nie 4.
+    #     Statek (Transport > 0) nie zajmuje miejsca, bez "- 1".
+    zamien("MoM/src/MainScr.c",
+           "                src_boatriders_count = troop_count;\n"
+           "                for(itr_troops = 0; itr_troops < troop_count; itr_troops++)\n"
+           "                {\n"
+           "                    if(\n"
+           "                        (_UNITS[Units[itr_troops]].type > ut_Chosen) ||\n"
+           "                        (Unit_Has_AirTravel_Item(Units[itr_troops]) == ST_TRUE) ||\n"
+           "                        (Unit_Has_WaterTravel_Item(Units[itr_troops]) == ST_TRUE) ||\n"
+           "                        (Unit_Has_Swimming(Units[itr_troops]) == ST_TRUE) ||\n"
+           "                        (Unit_Has_WindWalking(Units[itr_troops]) == ST_TRUE) ||\n"
+           "                        (Unit_Has_AirTravel(Units[itr_troops]) == ST_TRUE)\n"
+           "                    )\n"
+           "                    {\n"
+           "                        src_boatriders_count--;\n"
+           "                    }\n"
+           "                }\n"
+           "\n"
+           "                if((dst_boatriders_count + src_boatriders_count - 1) > Transport_Capacity)\n"
+           "                {\n"
+           "                    Path_Length = itr_Path_Length;                    \n"
+           "                }\n",
+           "                src_boatriders_count = troop_count;\n"
+           "                for(itr_troops = 0; itr_troops < troop_count; itr_troops++)\n"
+           "                {\n"
+           "                    if(\n"
+           "                        (_UNITS[troops[itr_troops]].type <= ut_Chosen) ||  /* AMIGA 0.8.2: bylo Units[] i > ut_Chosen */\n"
+           "                        (_unit_type_table[_UNITS[troops[itr_troops]].type].Transport > 0) ||  /* AMIGA 0.8.2: statek nie zajmuje miejsca */\n"
+           "                        (Unit_Has_AirTravel_Item(troops[itr_troops]) == ST_TRUE) ||\n"
+           "                        (Unit_Has_WaterTravel_Item(troops[itr_troops]) == ST_TRUE) ||\n"
+           "                        (Unit_Has_Swimming(troops[itr_troops]) == ST_TRUE) ||\n"
+           "                        (Unit_Has_WindWalking(troops[itr_troops]) == ST_TRUE) ||\n"
+           "                        (Unit_Has_AirTravel(troops[itr_troops]) == ST_TRUE)\n"
+           "                    )\n"
+           "                    {\n"
+           "                        src_boatriders_count--;\n"
+           "                    }\n"
+           "                }\n"
+           "\n"
+           "                if(player_idx == HUMAN_PLAYER_IDX) { printf(\"[amiga] statek: (%d,%d) miejsc %d, na pokladzie %d, wchodzi %d -> %s\\n\", (int)mvpth_x[itr_Path_Length], (int)mvpth_y[itr_Path_Length], (int)Transport_Capacity, (int)dst_boatriders_count, (int)src_boatriders_count, ((dst_boatriders_count + src_boatriders_count) > Transport_Capacity) ? \"NIE\" : \"tak\"); fflush(stdout); }\n"
+           "                if((dst_boatriders_count + src_boatriders_count) > Transport_Capacity)  /* AMIGA 0.8.2: bez - 1 (2 Triremy = 4 miejsca) */\n"
+           "                {\n"
+           "                    Path_Length = itr_Path_Length;                    \n"
+           "                }\n", ile=1)
+    zamien("MoM/src/MainScr.c",
+           "                        (_UNITS[Units[itr_troops]].type > ut_Chosen) ||\n",
+           "                        (_UNITS[Units[itr_troops]].type <= ut_Chosen) ||  /* AMIGA 0.8.2: bylo > (bohater nie zajmuje miejsca) */\n"
+           "                        (_unit_type_table[_UNITS[Units[itr_troops]].type].Transport > 0) ||  /* AMIGA 0.8.2: statek nie zajmuje miejsca */\n", ile=1)
+    zamien("MoM/src/MainScr.c",
+           "(_UNITS[checked_troops[itr_troops]].type > ut_Chosen) ||\n",
+           "(_UNITS[checked_troops[itr_troops]].type <= ut_Chosen) || (_unit_type_table[_UNITS[checked_troops[itr_troops]].type].Transport > 0) ||  /* AMIGA 0.8.2: bylo > ut_Chosen; statek nie zajmuje miejsca */\n", ile=2)
+    zamien("MoM/src/MainScr.c",
+           "((checked_troops_boatriders_count - 1) <= dst_troops_carry_capacity)",
+           "(checked_troops_boatriders_count <= dst_troops_carry_capacity)  /* AMIGA 0.8.2: bez - 1 */", ile=2)
+
+    # 0.8.2: Square_Has_City "while((itr_cities++ < _cities) ...)" sprawdza
+    # miasta 1.._cities zamiast 0.._cities-1 - nie widzi miasta nr 0 (stolica
+    # gracza: w zapisie gracza Dover) i czyta wolny rekord za ostatnim. Statek
+    # wyplywajacy z Dover zabieral oddzialy, z kazdego innego miasta plynie
+    # sam (Build_Moveable_Stack / Build_RoadBuilder_Stack); Eval_Move_Path
+    # nie traktowal Dover jak miasta. City_At_Square__2 robi to dobrze.
+    zamien("MoM/src/MainScr.c",
+           "    while((itr_cities++ < _cities) && (square_has_city == ST_UNDEFINED))\n"
+           "    {\n"
+           "\n"
+           "        if(\n"
+           "            (_CITIES[itr_cities].wp == wp)\n"
+           "            &&\n"
+           "            (_CITIES[itr_cities].wx == wx)\n"
+           "            &&\n"
+           "            (_CITIES[itr_cities].wy == wy)\n"
+           "        )\n"
+           "        {\n"
+           "\n"
+           "            square_has_city = itr_cities;\n"
+           "\n"
+           "        }\n"
+           "\n"
+           "    }\n",
+           "    while((itr_cities < _cities) && (square_has_city == ST_UNDEFINED))  /* AMIGA 0.8.2: bylo itr_cities++ (pomijalo miasto 0) */\n"
+           "    {\n"
+           "\n"
+           "        if(\n"
+           "            (_CITIES[itr_cities].wp == wp)\n"
+           "            &&\n"
+           "            (_CITIES[itr_cities].wx == wx)\n"
+           "            &&\n"
+           "            (_CITIES[itr_cities].wy == wy)\n"
+           "        )\n"
+           "        {\n"
+           "\n"
+           "            square_has_city = itr_cities;\n"
+           "\n"
+           "        }\n"
+           "\n"
+           "        itr_cities++;\n"
+           "\n"
+           "    }\n", ile=1)
+
 
 def main():
     global ROOT
