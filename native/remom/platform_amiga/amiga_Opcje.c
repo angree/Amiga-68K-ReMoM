@@ -60,6 +60,7 @@ int amiga_opt_grafika = 0;
 int amiga_opt_muzyka = 1;
 int amiga_opt_preload = 0;             /* preload=1 (remom-prefs, 0.4.4): LBX kopiowane do RAM: */
 int amiga_opt_muzyka_22 = 0;           /* musicrate=1 (remom-prefs): AdLib na zywo 22 kHz */
+int amiga_opt_oryginal = 0;            /* rules=1 (remom-prefs, 0.8.3): zasady oryginalu - amiga_le.h */
 static char amiga_opt_reszta[256];   /* linie amiga.cfg, ktorych gra nie zna */
 int amiga_opt_fps = 1;
 static int amiga_opt_wczytane = 0;
@@ -92,6 +93,7 @@ void Amiga_Opcje_Wczytaj(void)
             else if(sscanf(linia, "fps=%d", &v) == 1)   { amiga_opt_fps = (v != 0); }
             else if(strncmp(linia, "preload=", 8) == 0 && strlen(amiga_opt_reszta) + strlen(linia) < sizeof(amiga_opt_reszta)) { amiga_opt_preload = (linia[8] == '1'); strcat(amiga_opt_reszta, linia); }
             else if(strncmp(linia, "musicrate=", 10) == 0 && strlen(amiga_opt_reszta) + strlen(linia) < sizeof(amiga_opt_reszta)) { amiga_opt_muzyka_22 = (linia[10] == '1'); strcat(amiga_opt_reszta, linia); }
+            else if(strncmp(linia, "rules=", 6) == 0 && strlen(amiga_opt_reszta) + strlen(linia) < sizeof(amiga_opt_reszta)) { amiga_opt_oryginal = (linia[6] == '1'); strcat(amiga_opt_reszta, linia); }
             else if(strlen(amiga_opt_reszta) + strlen(linia) < sizeof(amiga_opt_reszta)) { strcat(amiga_opt_reszta, linia); }  /* klucze remom-prefs (musicrate, synth) - oddawane przy zapisie */
         }
         fclose(f);
@@ -108,8 +110,8 @@ void Amiga_Opcje_Wczytaj(void)
         else if(e[0] == 'n' || e[0] == 'N') { amiga_opt_wideo = 2; }
         else                                { amiga_opt_wideo = 0; }
     }
-    printf("[amiga] opcje: cursor=%d bar=%d video=%d gfx=%d music=%d fps=%d\n", amiga_opt_kursor, amiga_opt_pasek,
-           amiga_opt_wideo, amiga_opt_grafika, amiga_opt_muzyka, amiga_opt_fps);
+    printf("[amiga] opcje: cursor=%d bar=%d video=%d gfx=%d music=%d fps=%d rules=%d\n", amiga_opt_kursor, amiga_opt_pasek,
+           amiga_opt_wideo, amiga_opt_grafika, amiga_opt_muzyka, amiga_opt_fps, amiga_opt_oryginal);
     fflush(stdout);
 }
 

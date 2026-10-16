@@ -1999,7 +1999,7 @@ def latki_bez_float():
            "                {\n"
            "                    if(\n"
            "                        (_UNITS[troops[itr_troops]].type <= ut_Chosen) ||  /* AMIGA 0.8.2: bylo Units[] i > ut_Chosen */\n"
-           "                        (_unit_type_table[_UNITS[troops[itr_troops]].type].Transport > 0) ||  /* AMIGA 0.8.2: statek nie zajmuje miejsca */\n"
+           "                        ((_unit_type_table[_UNITS[troops[itr_troops]].type].Transport > 0) && (amiga_opt_oryginal == 0)) ||  /* AMIGA 0.8.2: statek nie zajmuje miejsca (rules=1: jak oryginal) */\n"
            "                        (Unit_Has_AirTravel_Item(troops[itr_troops]) == ST_TRUE) ||\n"
            "                        (Unit_Has_WaterTravel_Item(troops[itr_troops]) == ST_TRUE) ||\n"
            "                        (Unit_Has_Swimming(troops[itr_troops]) == ST_TRUE) ||\n"
@@ -2011,21 +2011,21 @@ def latki_bez_float():
            "                    }\n"
            "                }\n"
            "\n"
-           "                if(player_idx == HUMAN_PLAYER_IDX) { printf(\"[amiga] statek: (%d,%d) miejsc %d, na pokladzie %d, wchodzi %d -> %s\\n\", (int)mvpth_x[itr_Path_Length], (int)mvpth_y[itr_Path_Length], (int)Transport_Capacity, (int)dst_boatriders_count, (int)src_boatriders_count, ((dst_boatriders_count + src_boatriders_count) > Transport_Capacity) ? \"NIE\" : \"tak\"); fflush(stdout); }\n"
-           "                if((dst_boatriders_count + src_boatriders_count) > Transport_Capacity)  /* AMIGA 0.8.2: bez - 1 (2 Triremy = 4 miejsca) */\n"
+           "                if(player_idx == HUMAN_PLAYER_IDX) { printf(\"[amiga] statek: (%d,%d) miejsc %d, na pokladzie %d, wchodzi %d -> %s\\n\", (int)mvpth_x[itr_Path_Length], (int)mvpth_y[itr_Path_Length], (int)Transport_Capacity, (int)dst_boatriders_count, (int)src_boatriders_count, ((dst_boatriders_count + src_boatriders_count - (amiga_opt_oryginal != 0)) > Transport_Capacity) ? \"NIE\" : \"tak\"); fflush(stdout); }\n"
+           "                if((dst_boatriders_count + src_boatriders_count - (amiga_opt_oryginal != 0)) > Transport_Capacity)  /* AMIGA 0.8.2: bez - 1 (2 Triremy = 4 miejsca); rules=1: z - 1 jak oryginal */\n"
            "                {\n"
            "                    Path_Length = itr_Path_Length;                    \n"
            "                }\n", ile=1)
     zamien("MoM/src/MainScr.c",
            "                        (_UNITS[Units[itr_troops]].type > ut_Chosen) ||\n",
            "                        (_UNITS[Units[itr_troops]].type <= ut_Chosen) ||  /* AMIGA 0.8.2: bylo > (bohater nie zajmuje miejsca) */\n"
-           "                        (_unit_type_table[_UNITS[Units[itr_troops]].type].Transport > 0) ||  /* AMIGA 0.8.2: statek nie zajmuje miejsca */\n", ile=1)
+           "                        ((_unit_type_table[_UNITS[Units[itr_troops]].type].Transport > 0) && (amiga_opt_oryginal == 0)) ||  /* AMIGA 0.8.2: statek nie zajmuje miejsca (rules=1: jak oryginal) */\n", ile=1)
     zamien("MoM/src/MainScr.c",
            "(_UNITS[checked_troops[itr_troops]].type > ut_Chosen) ||\n",
-           "(_UNITS[checked_troops[itr_troops]].type <= ut_Chosen) || (_unit_type_table[_UNITS[checked_troops[itr_troops]].type].Transport > 0) ||  /* AMIGA 0.8.2: bylo > ut_Chosen; statek nie zajmuje miejsca */\n", ile=2)
+           "(_UNITS[checked_troops[itr_troops]].type <= ut_Chosen) || ((_unit_type_table[_UNITS[checked_troops[itr_troops]].type].Transport > 0) && (amiga_opt_oryginal == 0)) ||  /* AMIGA 0.8.2: bylo > ut_Chosen; statek nie zajmuje miejsca (rules=1: jak oryginal) */\n", ile=2)
     zamien("MoM/src/MainScr.c",
            "((checked_troops_boatriders_count - 1) <= dst_troops_carry_capacity)",
-           "(checked_troops_boatriders_count <= dst_troops_carry_capacity)  /* AMIGA 0.8.2: bez - 1 */", ile=2)
+           "((checked_troops_boatriders_count - (amiga_opt_oryginal != 0)) <= dst_troops_carry_capacity)  /* AMIGA 0.8.2: bez - 1; rules=1: z - 1 jak oryginal */", ile=2)
 
     # 0.8.2: Square_Has_City "while((itr_cities++ < _cities) ...)" sprawdza
     # miasta 1.._cities zamiast 0.._cities-1 - nie widzi miasta nr 0 (stolica
@@ -2070,6 +2070,35 @@ def latki_bez_float():
            "        itr_cities++;\n"
            "\n"
            "    }\n", ile=1)
+
+    # 0.8.3 (gracz: latajace jednostki chodza po zwyklych drogach za darmo,
+    # jak po zakletych). Init_MovePathMap, galaz Flying: koszt 0 dostawalo
+    # kazde pole z (flagi & (MSF_ROAD | MSF_EROAD)) != 0, czyli takze zwykla
+    # droga. Wiki MoM (Roads): lotnik sam placi 1 ruch na kazdym terenie,
+    # takze na zwyklej drodze; 0 tylko na drodze zakletej (z piechota w
+    # grupie stos idzie trybem pieszym - 0.5 - i tego to nie dotyczy).
+    # Blad wiki "lotnik placi 1 wchodzac do miasta z poczatku gry na
+    # Myrrorze" (pod takim miastem jest droga bez MSF_EROAD) tez wymaga, zeby
+    # oryginal dawal 0 tylko przy obu flagach - stad == road_bits.
+    # Domyslnie (rules=0, developer 2026-10-16 za propozycja gracza): lotnik
+    # sam placi na drodze tyle co piechota - koszt z mapy walking (0.5 na
+    # zwyklej, 0 na zakletej i na drogach Myrroru). rules=1: jak oryginal.
+    zamien("MoM/src/UnitMove.c",
+           "            if((terrain_flags_ptr[itr_squares] & road_bits) != 0)\n"
+           "            {\n"
+           "                movemap_ptr[itr_squares] = 0;\n"
+           "            }\n",
+           "            if((terrain_flags_ptr[itr_squares] & road_bits) != 0)  /* AMIGA 0.8.3: bylo zawsze 0 - zwykla droga za darmo dla lotnikow */\n"
+           "            {\n"
+           "                if((terrain_flags_ptr[itr_squares] & road_bits) == road_bits)\n"
+           "                {\n"
+           "                    movemap_ptr[itr_squares] = 0;  /* zakleta droga - tak tez oryginal */\n"
+           "                }\n"
+           "                else if(amiga_opt_oryginal == 0)\n"
+           "                {\n"
+           "                    movemap_ptr[itr_squares] = movement_mode_cost_maps[wp].walking.moves2[itr_squares];  /* zwykla droga jak piechota (oryginal: 1 ruch) */\n"
+           "                }\n"
+           "            }\n", ile=1)
 
 
 def main():

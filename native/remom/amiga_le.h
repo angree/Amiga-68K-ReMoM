@@ -115,6 +115,11 @@ void Amiga_Hex(const char *tag, const void *p, int n);
 #define AMIGA_NATIVE_ORDER _Pragma("scalar_storage_order default")
 #define AMIGA_LE_ORDER     _Pragma("scalar_storage_order little-endian")
 
+/* rules=1 w amiga.cfg (remom-prefs "Rules: Original", 0.8.3): zasady
+   oryginalu tam, gdzie port je swiadomie zmienia (2 Triremy = 3 miejsca,
+   lotnik sam placi 1 ruch na zwyklej drodze). 0 = poprawki portu. */
+extern int amiga_opt_oryginal;   /* platform_amiga/amiga_Opcje.c */
+
 #pragma scalar_storage_order little-endian
 
 #endif /* AMIGA_LE_H */

@@ -16,3 +16,7 @@ void Amiga_Rysuj_Napis_Menu(const char * tekst, int x, int y, int podswietlony)
     (void)y;
     (void)podswietlony;
 }
+
+/* rules (0.8.3, amiga_le.h): HeMoM gra zawsze z poprawkami portu, jak
+   domyslnie remom - wynik zgodny z wyrocznia na PC nie zalezy od amiga.cfg */
+int amiga_opt_oryginal = 0;
