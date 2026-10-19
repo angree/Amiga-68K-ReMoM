@@ -2100,6 +2100,74 @@ def latki_bez_float():
            "                }\n"
            "            }\n", ile=1)
 
+    # 0.8.4 (gracz: "wywalilo mi do systemu", MoM-quit.zip: CPU TRAP 4 w
+    # Set_Unit_Action_Special+0x26 - poprawna instrukcja, czyli nadpisany
+    # kod; wczesniej: Plane x3, ksiega, czar na pole mapy przewinietej w dol).
+    # Odkrywanie mapy (Set_Map_Square_Explored_Flags_XYP - ruch kazdej
+    # jednostki, Earth Lore na cale okno mapy) dla wy == 39 bralo wiersz
+    # "w dol" = WORLD_WIDTH - 1 = 59 (komentarz ReMoM: "40 - 1 = 39").
+    # Na Myrrorze to _square_explored[2400 + 59*60 + x] - ~1170 B za tablica
+    # (4832 B), w square_scouted_p0/p1 i World_Data_Extra. Ten sam tekst w
+    # masterze upstreamu. Do tego dwie funkcje pomocnicze braly tablice od
+    # &_square_explored[wp] (bajt wp planu 0) zamiast wp * WORLD_SIZE - Myrror
+    # psul mgle Arcanusa; po poprawce bazy wiersz 40 (wy_d1 przy wy = 39,
+    # wy_u2 = WORLD_HEIGHT) wychodzilby za tablice - stad przyciecie do 39
+    # (drake178: "BUG: at Y=39, this is out of bounds on Myrror!" - blad
+    # oryginalu, tylko odczyt, ale zapis przy dopasowaniu).
+    zamien("MoM/src/MainScr_Maps.c",
+           "        wy_d1 = WORLD_WIDTH - 1;  // 40 - 1 = 39\n"
+           "        wy_d2 = WORLD_WIDTH - 2;  // 40 - 2 = 38\n",
+           "        wy_d1 = WORLD_YMAX;  /* AMIGA 0.8.4: bylo WORLD_WIDTH - 1 = 59 - zapis ~1170 B za _square_explored na Myrrorze */\n"
+           "        wy_d2 = WORLD_YMAX;\n", ile=1)
+    zamien("MoM/src/MainScr_Maps.c",
+           "    ptr_square_explored = &_square_explored[wp];\n"
+           "    \n"
+           "    wx_r1 = (wx + 1);\n",
+           "    ptr_square_explored = &_square_explored[(wp * WORLD_SIZE)];  /* AMIGA 0.8.4: bylo [wp] */\n"
+           "    if(wy >= WORLD_YMAX) { return; }  /* AMIGA 0.8.4: wiersz 40 poza tablica (drake178: OOB na Myrrorze) */\n"
+           "    \n"
+           "    wx_r1 = (wx + 1);\n", ile=1)
+    zamien("MoM/src/MainScr_Maps.c",
+           "    ptr_square_explored = &_square_explored[wp];\n"
+           "    \n"
+           "    wx_l2 = (wx - 2);\n",
+           "    ptr_square_explored = &_square_explored[(wp * WORLD_SIZE)];  /* AMIGA 0.8.4: bylo [wp] */\n"
+           "    \n"
+           "    wx_l2 = (wx - 2);\n", ile=1)
+    zamien("MoM/src/MainScr_Maps.c",
+           "            wy_u2 = WORLD_HEIGHT;\n",
+           "            wy_u2 = WORLD_YMAX;  /* AMIGA 0.8.4: bylo WORLD_HEIGHT - wiersz 40 poza tablica */\n", ile=1)
+
+    # 0.8.4 (gracz: jednostka idaca na rozkaz po Myrrorze po automatycznej
+    # zmianie planu przy jakims zdarzeniu poszla po Arcanusie, "chyba
+    # przechodzila przez wieze"; inzynier zbudowal droge na Arcanusie).
+    # Next_Unit_Nearest_Available bierze jednostke W WIEZY z dowolnego planu
+    # (in_tower), a WIZ_NextIdleStack rusza ja Stack_Move_To z *map_p - planem,
+    # ktory akurat pokazuje ekran. Move_Units_Draw ustawia wp = map_p (0.7.7),
+    # wiec rozkaz konczy sie na drugim planie, a Make_Road buduje tam droge.
+    # Wiki (Tower of Wizardry): plan wyjscia wybiera gracz przyciskiem Plane
+    # przed ruchem - o rozkazach nic. Rozkaz idzie wiec na plan, na ktorym go
+    # wydano: wp jednostki w wiezy = plan widoku w chwili rozkazu (Stack_Action
+    # Go-To), a ruch z rozkazu przelacza widok na wp jednostki.
+    zamien("MoM/src/UNITSTK.c",
+           "                    Allocate_Reduced_Map();\n"
+           "                    Stack_Move_To(player_idx, _unit, next_unit_dst_wx, next_unit_dst_wy, map_x, map_y, *map_p);\n",
+           "                    Allocate_Reduced_Map();\n"
+           "                    if((_UNITS[_unit].in_tower == ST_TRUE) && (*map_p != _UNITS[_unit].wp))  /* AMIGA 0.8.4: rozkaz z wiezy na plan, na ktorym go wydano */\n"
+           "                    {\n"
+           "                        printf(\"[amiga] wieza: jedn. %d na (%d,%d) idzie na plan %d (widok byl %d)\\n\", (int)_unit, (int)_UNITS[_unit].wx, (int)_UNITS[_unit].wy, (int)_UNITS[_unit].wp, (int)*map_p); fflush(stdout);\n"
+           "                        *map_p = _UNITS[_unit].wp;\n"
+           "                    }\n"
+           "                    Stack_Move_To(player_idx, _unit, next_unit_dst_wx, next_unit_dst_wy, map_x, map_y, *map_p);\n", ile=1)
+    zamien("MoM/src/MainScr.c",
+           "                    _UNITS[unit_idx].Status = 3;  /* \"GOTO\"  us_GOTO */\n"
+           "                    _UNITS[unit_idx].dst_wx = (int8_t)destination_x;\n"
+           "                    _UNITS[unit_idx].dst_wy = (int8_t)destination_y;\n",
+           "                    _UNITS[unit_idx].Status = 3;  /* \"GOTO\"  us_GOTO */\n"
+           "                    _UNITS[unit_idx].dst_wx = (int8_t)destination_x;\n"
+           "                    _UNITS[unit_idx].dst_wy = (int8_t)destination_y;\n"
+           "                    if(_UNITS[unit_idx].in_tower == ST_TRUE) { _UNITS[unit_idx].wp = (int8_t)*map_p; }  /* AMIGA 0.8.4: rozkaz z wiezy - plan widoku */\n", ile=1)
+
 
 def main():
     global ROOT
