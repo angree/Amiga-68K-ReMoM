@@ -159,15 +159,14 @@ struct konw
     int tryb;                  /* 0 prosty syntezator, 1 AdLib */
     uint8_t barwy[2][128][12]; /* [0] bank 55 (melodia), [1] bank 127 (perkusja) */
     uint8_t jest[2][128];
-    uint8_t timb[128][2];      /* TIMB biezacego utworu: patch, bank */
-    int ile_timb;
-    uint8_t bank_kan[16];      /* CC 114 (XMIDI: wybor banku), 0 = z TIMB */
     int16_t fale_opl[4][256];
     adl_glos_t ag[ADL_GLOSOW];
     uint32_t wiek;
     uint32_t midi_dl;          /* na zywo: do zapetlenia */
     int petla;
     int zywo_koniec;           /* 0.5.2: utwor bez petli wygasl - Konw_Graj zwraca 0 */
+    uint32_t petla_tik;        /* 0.8.5: tik CC 116 (FOR) - tu wraca petla, wstep gra raz */
+    int pomin;                 /* 0.8.5: przewijanie do petla_tik, bez zmiany stanu kanalow */
 };
 
 static void adl_nuta_on(konw_t * k, int ch, int nuta, int vel);
@@ -475,7 +474,7 @@ static void zdarzenie(konw_t * k, sciezka_t * s)
         s->status = st;
         if (s->p < s->kon) a = *s->p++ & 0x7F;
         if ((st & 0xF0) != 0xC0 && (st & 0xF0) != 0xD0 && s->p < s->kon) b = *s->p++ & 0x7F;
-        switch (st & 0xF0) {
+        if (!k->pomin) switch (st & 0xF0) {
         case 0x90: if (b) { nuta_on(k, ch, a, b); break; }
                    /* fall through - nuta z predkoscia 0 to off */
         case 0x80: nuta_off(k, ch, a); break;
@@ -492,8 +491,7 @@ static void zdarzenie(konw_t * k, sciezka_t * s)
                     for (i = 0; i < ADL_GLOSOW; i++)
                         if (k->ag[i].zajety && k->ag[i].kanal == ch && k->ag[i].trzymany) k->ag[i].op[0].etap = k->ag[i].op[1].etap = 4;
                 }
-            } else if (a == 114) { k->bank_kan[ch] = (uint8_t)b; }   /* XMIDI: wybor banku barw */
-            else if (a == 121) { glos_wyzeruj_kanal(k, ch); }
+            } else if (a == 121) { glos_wyzeruj_kanal(k, ch); }
             else if (a == 123 || a == 120) {
                 int i;
                 for (i = 0; i < MAXV; i++) if (k->g[i].stan && k->g[i].kanal == ch) k->g[i].stan = 3;
@@ -699,14 +697,11 @@ static void adl_nuta_on(konw_t * k, int ch, int nuta, int vel)
         if (nuta < 128 && k->jest[1][nuta]) t = k->barwy[1][nuta];
         if (t != NULL && t[0] != 0) graj = t[0];       /* perkusja: stala wysokosc z barwy */
     } else {
-        int bank = k->bank_kan[ch];
-        if (bank == 0) {
-            bank = 55;
-            for (i = 0; i < k->ile_timb; i++) if (k->timb[i][0] == c->program) { bank = k->timb[i][1]; break; }
-        }
-        if (bank == 55 && k->jest[0][c->program]) t = k->barwy[0][c->program];
-        else if (bank == 127 && k->jest[1][c->program]) t = k->barwy[1][c->program];
-        else if (k->jest[0][c->program]) t = k->barwy[0][c->program];
+        /* 0.8.5: melodia zawsze z banku 55. Kazda nuta melodii w MUSIC.LBX ma przed soba
+           CC 114 = 55, tylko konwerter XMIDI to CC wycina. Wczesniej bank bralismy z TIMB
+           (pierwsze trafienie po numerze), a TIMB sklada tez barwy perkusji (bank 127),
+           ktorych numer to numer nuty: program 48 trafial na barwe bebna. */
+        if (k->jest[0][c->program]) t = k->barwy[0][c->program];
         if (t != NULL) graj = nuta + (int8_t)t[0];
     }
     if (t == NULL) return;                               /* brak barwy - AIL tez milczy */
@@ -877,18 +872,6 @@ static int nastepny(konw_t * k)
         }
         fclose(f);
         h = fnv1a(we, u->dl);
-        /* TIMB: patch -> bank dla AdLib (jak konwerter XMIDI ReMoM) */
-        k->ile_timb = 0;
-        for (i = 0; i + 10 <= (int)u->dl; i++) {
-            if (memcmp(we + i, "TIMB", 4) == 0) {
-                int ile = we[i + 8] | (we[i + 9] << 8), j;
-                for (j = 0; j < ile && j < 128 && i + 12 + 2 * j <= (int)u->dl; j++) {
-                    k->timb[j][0] = we[i + 10 + 2 * j]; k->timb[j][1] = we[i + 11 + 2 * j];
-                }
-                k->ile_timb = j;
-                break;
-            }
-        }
         for (i = 0; i < k->ile_fnv; i++) if (k->fnv_zrobione[i] == h) dup = 1;
         if (dup || !fmt_mus_convert_xmid(we, u->dl, &midi, &midi_dl, &petla)) { free(we); free(midi); continue; }
         free(we);
@@ -915,7 +898,6 @@ static int nastepny(konw_t * k)
         for (i = 0; i < 16; i++) glos_wyzeruj_kanal(k, i);
         memset(k->g, 0, sizeof k->g);
         memset(k->ag, 0, sizeof k->ag);
-        memset(k->bank_kan, 0, sizeof k->bank_kan);
         k->teraz = 0;
         k->ogon = 0;
         k->zapisane_bloki = 0;
@@ -1004,20 +986,46 @@ void Konw_Koniec(konw_t * k)
    Koszt: kilkadziesiat procent 68030, kilka procent 68060 - stad opis
    "needs a fast CPU" w remom-prefs. */
 
-static void timb_czytaj(konw_t * k, const uint8_t * we, uint32_t dl)
+/* 0.8.5: tik pierwszego CC 116 (AIL: FOR) w EVNT, 0 = brak albo na poczatku.
+   Motywy bojowe magow maja wstep, a petla obejmuje tylko to, co po FOR. */
+static uint32_t xmi_tik_for(const uint8_t * we, uint32_t dl)
 {
-    int i;
-    k->ile_timb = 0;
-    for (i = 0; i + 10 <= (int)dl; i++) {
-        if (memcmp(we + i, "TIMB", 4) == 0) {
-            int ile = we[i + 8] | (we[i + 9] << 8), j;
-            for (j = 0; j < ile && j < 128 && i + 12 + 2 * j <= (int)dl; j++) {
-                k->timb[j][0] = we[i + 10 + 2 * j]; k->timb[j][1] = we[i + 11 + 2 * j];
-            }
-            k->ile_timb = j;
-            return;
+    uint32_t i, tik = 0;
+    const uint8_t * p = NULL, * kon = NULL;
+    for (i = 0; i + 8 <= dl; i++) {
+        if (memcmp(we + i, "EVNT", 4) == 0) {
+            uint32_t n = be32(we + i + 4);
+            p = we + i + 8;
+            kon = (n <= dl - i - 8) ? p + n : we + dl;
+            break;
         }
     }
+    if (p == NULL) return 0;
+    while (p < kon) {
+        uint8_t st = *p++;
+        if (st < 0x80) { tik += st; continue; }
+        switch (st & 0xF0) {
+        case 0x90:                             /* klawisz, predkosc, dlugosc VLQ */
+            p += 2;
+            while (p < kon && (*p & 0x80)) p++;
+            p++;
+            break;
+        case 0xB0:
+            if (p + 1 < kon && p[0] == 116) return tik;
+            p += 2;
+            break;
+        case 0x80: case 0xA0: case 0xE0: p += 2; break;
+        case 0xC0: case 0xD0: p += 1; break;
+        default: {                             /* FF typ dlugosc, F0 dlugosc */
+            uint32_t d = 0;
+            if (st == 0xFF) p++;
+            else if (st != 0xF0 && st != 0xF7) return 0;
+            while (p < kon) { uint8_t b = *p++; d = (d << 7) | (b & 0x7F); if (!(b & 0x80)) break; }
+            p += d;
+            break; }
+        }
+    }
+    return 0;
 }
 
 static void zywo_od_poczatku(konw_t * k)
@@ -1025,6 +1033,20 @@ static void zywo_od_poczatku(konw_t * k)
     midi_start(k, k->midi, k->midi_dl);
     k->teraz = 0;
     k->ogon = 0;
+    if (k->petla_tik != 0) {
+        /* AIL wraca do FOR i nie rusza barw ani glosnosci: przewijamy bez zmian stanu */
+        k->pomin = 1;
+        for (;;) {
+            sciezka_t * min = NULL;
+            int i;
+            for (i = 0; i < k->ile_sc; i++)
+                if (!k->sc[i].koniec && (min == NULL || k->sc[i].tik < min->tik)) min = &k->sc[i];
+            if (min == NULL || min->tik >= k->petla_tik) break;
+            zdarzenie(k, min);
+        }
+        k->pomin = 0;
+        k->teraz = tik_na_probke(k, k->petla_tik);
+    }
 }
 
 konw_t * Konw_Na_Zywo(long rate, const uint8_t * we, uint32_t dl, char * blad, int cap)
@@ -1039,7 +1061,7 @@ konw_t * Konw_Na_Zywo(long rate, const uint8_t * we, uint32_t dl, char * blad, i
     k->tryb = 1;
     adl_fale(k);
     if (!adl_wczytaj_fat(k)) { snprintf(blad, (size_t)cap, "no FAT.AD"); free(k); return NULL; }
-    timb_czytaj(k, we, dl);
+    k->petla_tik = xmi_tik_for(we, dl);
     if (!fmt_mus_convert_xmid(we, dl, &midi, &mdl, &petla)) {
         snprintf(blad, (size_t)cap, "XMIDI conversion failed"); free(midi); free(k); return NULL;
     }
