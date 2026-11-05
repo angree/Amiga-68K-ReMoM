@@ -441,6 +441,12 @@ void Platform_Video_Update(void)
             amiga_pelna_t = (unsigned long)Platform_Get_Millies();
         }
     }
+    else if(amigagfx_palette_needs_redraw())
+    {
+        /* 0.8.6: ekran gleboki (MorphOS) - sama zmiana palety (sciemnianie) nie zmienia
+           zadnego piksela, a stare kolory sa juz na ekranie */
+        amigagfx_blit(0, 0, w, h);
+    }
 
     Perf_Live_Note_Present();
 }

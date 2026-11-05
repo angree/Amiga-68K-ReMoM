@@ -100,6 +100,8 @@ int amigagfx_rtg_has_mode(int w, int h);
 
 /* AMIGAGFX_BACKEND_* of the screen currently open (AGA when none is). */
 int amigagfx_backend(void);
+int amigagfx_is_morphos(void);
+int amigagfx_palette_needs_redraw(void);
 
 /* Open a w x h screen on the requested backend - 256 colours on AGA and RTG,
  * 64 on EHB. Returns 0 on success, non-zero on failure.

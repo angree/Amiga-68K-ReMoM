@@ -35,6 +35,35 @@
 
 #include "amiga_audio.h"
 
+/* ---- AHI (0.8.6, z AmiFFE) -----------------------------------------------
+ * Na MorphOS natywnym dzwiekiem jest AHI, a audio.device to tylko emulacja, ktora
+ * potrafi zawiesic gre. ahi.device idzie przez interfejs urzadzenia (CMD_WRITE na
+ * AHIRequest), bez SDK: jedna struktura przepisana z devices/ahi.h.
+ * Roznice wobec Pauli:
+ *  - kilka zapisow naraz gra JEDNOCZESNIE; zapis, ktory ma isc po innym, wskazuje
+ *    go w ahir_Link (kolejka muzyki linkuje kazdy bufor do poprzedniego);
+ *  - AbortIO dziala na grajacym zapisie, wiec przerwanie to AbortIO + WaitIO
+ *    (CMD_FLUSH skasowalby wszystko, razem z muzyka);
+ *  - Chip RAM niepotrzebny, czestotliwosc w Hz, glosnosc i pozycja 16.16. */
+struct AA_AHIRequest {
+    struct IOStdReq ahir_Std;
+    UWORD ahir_Version;
+    UWORD ahir_Pad1;
+    ULONG ahir_Private[2];
+    ULONG ahir_Type;
+    ULONG ahir_Frequency;
+    LONG  ahir_Volume;
+    LONG  ahir_Position;
+    struct AA_AHIRequest *ahir_Link;
+};
+#define AA_AHIST_M8S 0UL
+#define AA_PAL_CLOCK 3546895UL
+#define AA_REQ_SIZE (sizeof(struct AA_AHIRequest) > sizeof(struct IOAudio) ? \
+                     sizeof(struct AA_AHIRequest) : sizeof(struct IOAudio))
+static int aa_ahi = 0;           /* otwarte urzadzenie to ahi.device */
+int AmigaAudio_IsAHI(void) { return aa_ahi; }
+#define AA_MEM (aa_ahi ? MEMF_ANY : MEMF_CHIP)
+
 /* Paula length register counts 16-bit words: max 65535 words = 131070 bytes. */
 #define AA_MAX_BYTES 131070UL
 
@@ -103,9 +132,29 @@ int AmigaAudio_Open(void)
     aa_port = CreateMsgPort();
     if (aa_port == NULL) goto fail;
 
-    aa_opener = (struct IOAudio *)AllocVec(sizeof(struct IOAudio),
-                                           MEMF_PUBLIC | MEMF_CLEAR);
+    aa_opener = (struct IOAudio *)AllocVec(AA_REQ_SIZE, MEMF_PUBLIC | MEMF_CLEAR);
     if (aa_opener == NULL) goto fail;
+
+    aa_ahi = 0;
+    if (FindResident((CONST_STRPTR)"MorphOS") != NULL) {
+        struct AA_AHIRequest *a = (struct AA_AHIRequest *)aa_opener;
+        a->ahir_Std.io_Message.mn_ReplyPort = aa_port;
+        a->ahir_Std.io_Message.mn_Length    = sizeof(struct AA_AHIRequest);
+        a->ahir_Version = 4;
+        if (OpenDevice((STRPTR)"ahi.device", 0 /* AHI_DEFAULT_UNIT */,
+                       (struct IORequest *)a, 0) != 0)
+            goto fail;   /* brak AHI na MorphOS: gramy bez dzwieku */
+        aa_ahi = 1;
+        aa_devopen = 1;
+        for (i = 0; i < AMIGA_AUDIO_CHANNELS; i++) {
+            aa_req[i] = (struct IOAudio *)AllocVec(AA_REQ_SIZE, MEMF_PUBLIC | MEMF_CLEAR);
+            if (aa_req[i] == NULL) goto fail;
+            CopyMem(aa_opener, aa_req[i], AA_REQ_SIZE);
+            aa_busy[i] = 0;
+        }
+        aa_ready = 1;
+        return 1;
+    }
 
     aa_opener->ioa_Request.io_Message.mn_ReplyPort   = aa_port;
     aa_opener->ioa_Request.io_Message.mn_Node.ln_Pri = 0;  /* precedence */
@@ -126,8 +175,7 @@ int AmigaAudio_Open(void)
      * critically, ioa_AllocKey - the proof of ownership every later command
      * must carry. io_Unit is narrowed to the one channel per request. */
     for (i = 0; i < AMIGA_AUDIO_CHANNELS; i++) {
-        aa_req[i] = (struct IOAudio *)AllocVec(sizeof(struct IOAudio),
-                                               MEMF_PUBLIC | MEMF_CLEAR);
+        aa_req[i] = (struct IOAudio *)AllocVec(AA_REQ_SIZE, MEMF_PUBLIC | MEMF_CLEAR);
         if (aa_req[i] == NULL) goto fail;
         *aa_req[i] = *aa_opener;
         aa_req[i]->ioa_Request.io_Unit = (struct Unit *)(1UL << i);
@@ -164,7 +212,10 @@ void AmigaAudio_Close(void)
         }
     }
 
-    if (aa_devopen) {
+    if (aa_devopen && aa_ahi) {
+        CloseDevice((struct IORequest *)aa_opener);
+        aa_devopen = 0;
+    } else if (aa_devopen) {
         /* Explicit ADCMD_FREE (resets + frees our channels), then
          * CloseDevice - belt and braces, exactly as in paulatest.c. */
         aa_opener->ioa_Request.io_Command = ADCMD_FREE;
@@ -181,12 +232,13 @@ void AmigaAudio_Close(void)
     }
     if (aa_opener != NULL) { FreeVec(aa_opener); aa_opener = NULL; }
     if (aa_port != NULL) { DeleteMsgPort(aa_port); aa_port = NULL; }
+    aa_ahi = 0;
 }
 
 void *AmigaAudio_AllocSample(unsigned long bytes)
 {
     if (bytes == 0) return NULL;
-    return AllocVec(bytes, MEMF_CHIP);
+    return AllocVec(bytes, AA_MEM);
 }
 
 void AmigaAudio_FreeSample(void *p)
@@ -207,6 +259,39 @@ int AmigaAudio_ChannelIdle(int ch)
     return 0;
 }
 
+/* Jeden CMD_WRITE na kanale ch (obie drogi). link: tylko AHI, zadanie, po ktorym
+ * ten zapis ma zagrac (NULL = od razu). */
+static void AudWrite(struct IOAudio *io, int ch, void *data, ULONG len,
+                     int period, int volume, struct IOAudio *link)
+{
+    if (aa_ahi) {
+        struct AA_AHIRequest *a = (struct AA_AHIRequest *)io;
+        a->ahir_Std.io_Command = CMD_WRITE;
+        a->ahir_Std.io_Flags   = 0;
+        a->ahir_Std.io_Data    = data;
+        a->ahir_Std.io_Length  = len;
+        a->ahir_Std.io_Offset  = 0;
+        a->ahir_Type      = AA_AHIST_M8S;
+        a->ahir_Frequency = AA_PAL_CLOCK / (ULONG)period;
+        a->ahir_Volume    = (LONG)volume << 10;          /* 64 -> 1,0 */
+        /* jak w Pauli: kanaly 0 i 3 lewy, 1 i 2 prawy */
+        a->ahir_Position  = (ch == 0 || ch == 3) ? 0L : 0x10000L;
+        a->ahir_Link      = (struct AA_AHIRequest *)link;
+        BeginIO((struct IORequest *)a);
+        return;
+    }
+    io->ioa_Request.io_Command = CMD_WRITE;
+    io->ioa_Request.io_Flags   = ADIOF_PERVOL;   /* see file header: never lose this */
+    io->ioa_Request.io_Unit    = (struct Unit *)(1UL << ch);
+    io->ioa_Data   = (UBYTE *)data;
+    io->ioa_Length = len;
+    io->ioa_Period = (UWORD)period;
+    io->ioa_Volume = (UWORD)volume;
+    io->ioa_Cycles = 1;                  /* play once, then the channel stops */
+    /* MUST be BeginIO - see the file header. */
+    BeginIO((struct IORequest *)io);
+}
+
 int AmigaAudio_Play(int ch, void *chipdata, unsigned long bytes,
                     int period, int volume)
 {
@@ -224,17 +309,8 @@ int AmigaAudio_Play(int ch, void *chipdata, unsigned long bytes,
     if (volume > 64) volume = 64;
 
     io = aa_req[ch];
-    io->ioa_Request.io_Command = CMD_WRITE;
-    io->ioa_Request.io_Flags   = ADIOF_PERVOL;
-    io->ioa_Request.io_Unit    = (struct Unit *)(1UL << ch);
-    io->ioa_Data   = (UBYTE *)chipdata;
-    io->ioa_Length = bytes & ~1UL;       /* Paula wants an even byte count */
-    io->ioa_Period = (UWORD)period;
-    io->ioa_Volume = (UWORD)volume;
-    io->ioa_Cycles = 1;                  /* play once, then the channel stops */
-
-    /* MUST be BeginIO - see the file header. */
-    BeginIO((struct IORequest *)io);
+    /* Paula wants an even byte count */
+    AudWrite(io, ch, chipdata, bytes & ~1UL, period, volume, NULL);
     aa_busy[ch] = 1;
     return 1;
 }
@@ -265,6 +341,19 @@ static void AudFlush(ULONG unitmask)
 {
     struct IOAudio flush;
     if (!aa_devopen || aa_opener == NULL) return;
+    if (aa_ahi) {
+        /* AHI: przerwij to, co na tych kanalach czeka; wolajacy robia potem WaitIO */
+        int ch, mc, p;
+        for (ch = 0; ch < AMIGA_AUDIO_CHANNELS; ch++)
+            if ((unitmask & (1UL << ch)) && aa_req[ch] != NULL && aa_busy[ch])
+                AbortIO((struct IORequest *)aa_req[ch]);
+        for (mc = 0; mc < 2; mc++)
+            if (unitmask & (1UL << aa_mus_chan[mc]))
+                for (p = 0; p < AA_MUS_BUFS; p++)
+                    if (aa_mus_req[mc][p] != NULL && aa_mus_busy[mc][p])
+                        AbortIO((struct IORequest *)aa_mus_req[mc][p]);
+        return;
+    }
     flush = *aa_opener;
     flush.ioa_Request.io_Command = CMD_FLUSH;
     flush.ioa_Request.io_Flags   = 0;          /* reply through the port */
@@ -275,16 +364,13 @@ static void AudFlush(ULONG unitmask)
 static void MusWrite(int mc, int ping)
 {
     struct IOAudio *io = aa_mus_req[mc][ping];
+    struct IOAudio *link = NULL;
+    int prev = (ping + AA_MUS_BUFS - 1) % AA_MUS_BUFS;
     if (io == NULL || aa_mus_len[ping] < 2) return;
-    io->ioa_Request.io_Command = CMD_WRITE;
-    io->ioa_Request.io_Flags   = ADIOF_PERVOL;   /* see file header: never lose this */
-    io->ioa_Request.io_Unit    = (struct Unit *)(1UL << aa_mus_chan[mc]);
-    io->ioa_Data   = (UBYTE *)aa_mus_buf[ping];
-    io->ioa_Length = (ULONG)(aa_mus_len[ping] & ~1UL);
-    io->ioa_Period = (UWORD)aa_mus_period;
-    io->ioa_Volume = (UWORD)aa_mus_vol;
-    io->ioa_Cycles = 1;
-    BeginIO((struct IORequest *)io);
+    /* AHI gra zalegle zapisy razem: lancuch za poprzednim buforem kanalu, poki czeka */
+    if (aa_ahi && aa_mus_busy[mc][prev]) link = aa_mus_req[mc][prev];
+    AudWrite(io, aa_mus_chan[mc], aa_mus_buf[ping],
+             (ULONG)(aa_mus_len[ping] & ~1UL), aa_mus_period, aa_mus_vol, link);
     aa_mus_busy[mc][ping] = 1;
 }
 
@@ -355,7 +441,7 @@ static int MusStartL(int period, int chunk_samples,
 
     /* One byte per 8-bit sample; the two channels share these buffers. */
     for (b = 0; b < AA_MUS_BUFS; b++) {
-        aa_mus_buf[b] = (signed char *)AllocVec((ULONG)chunk_samples, MEMF_CHIP);
+        aa_mus_buf[b] = (signed char *)AllocVec((ULONG)chunk_samples, AA_MEM);
         if (aa_mus_buf[b] == NULL) { MusStopL(); return 0; }
         aa_mus_len[b] = 0;
     }
@@ -364,11 +450,10 @@ static int MusStartL(int period, int chunk_samples,
      * carry ioa_AllocKey. */
     for (mc = 0; mc < 2; mc++) {
         for (p = 0; p < AA_MUS_BUFS; p++) {
-            struct IOAudio *io = (struct IOAudio *)AllocVec(sizeof(struct IOAudio),
-                                                            MEMF_PUBLIC | MEMF_CLEAR);
+            struct IOAudio *io = (struct IOAudio *)AllocVec(AA_REQ_SIZE, MEMF_PUBLIC | MEMF_CLEAR);
             if (io == NULL) { MusStopL(); return 0; }
-            *io = *aa_opener;
-            io->ioa_Request.io_Unit = (struct Unit *)(1UL << aa_mus_chan[mc]);
+            CopyMem(aa_opener, io, AA_REQ_SIZE);
+            if (!aa_ahi) io->ioa_Request.io_Unit = (struct Unit *)(1UL << aa_mus_chan[mc]);
             aa_mus_req[mc][p] = io;
             aa_mus_busy[mc][p] = 0;
         }

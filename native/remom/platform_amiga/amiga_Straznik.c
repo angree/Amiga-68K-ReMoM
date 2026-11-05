@@ -182,6 +182,14 @@ void Amiga_Straznik_Start(void)
     {
         return;
     }
+    /* 0.8.6: serwer przerwan VBlank czyta ramke 68k - pod JIT MorphOS nie ma ani
+       tej ramki, ani przerwan Amigi (instrukcje, 40-MorphOS) */
+    if(FindResident((CONST_STRPTR)"MorphOS") != NULL)
+    {
+        printf("[amiga] straznik zwisu: wylaczony na MorphOS\n");
+        fflush(stdout);
+        return;
+    }
     straznik_gra = FindTask(NULL);
     straznik_rodzic = straznik_gra;
     straznik_int.is_Node.ln_Type = NT_INTERRUPT;

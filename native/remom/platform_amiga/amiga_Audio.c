@@ -224,7 +224,7 @@ static int Amiga_Audio_Gotowe(void)
                 }
             }
         }
-        printf("[amiga] audio.device: %s\n", (amiga_audio_stan == 1) ? "4 kanaly Pauli" : "niedostepne - gra bez dzwieku");
+        printf("[amiga] dzwiek: %s\n", (amiga_audio_stan != 1) ? "niedostepny - gra bez dzwieku" : (AmigaAudio_IsAHI() ? "ahi.device (MorphOS)" : "audio.device, 4 kanaly Pauli"));
         fflush(stdout);
         LOG_INFO(LOG_CAT_PFL, "[amiga] audio.device %s", (amiga_audio_stan == 1) ? "open" : "unavailable");
     }

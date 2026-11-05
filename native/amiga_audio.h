@@ -32,6 +32,7 @@ extern "C" {
  * Returns 1 on success, 0 on failure (caller must then stay silent;
  * every other call below is safe but a no-op / failure in that state). */
 int AmigaAudio_Open(void);
+int AmigaAudio_IsAHI(void);   /* 1 = ahi.device (MorphOS), 0 = audio.device */
 
 /* Abort any playing sound, free the channels, close the device.
  * Safe to call at any time, including after a failed/absent Open. */

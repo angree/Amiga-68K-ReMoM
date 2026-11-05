@@ -22,6 +22,10 @@ copy of Master of Magic. The GOG version works (see below).
 - A hard disk with about 25 MB free for the game data, about 60 MB with
   11 kHz music or about 100 MB with 22 kHz music
 
+### MorphOS and AROS
+
+The same 68k program also runs on MorphOS and AROS 68k, with no separate build. It finds the system by itself: on MorphOS it uses a deep RTG screen and AHI sound. This has only been tested on emulators (MorphOS 3.20 in QEMU, AROS in WinUAE), not on real machines.
+
 ## Installing with the GOG version
 
 1. Install *Master of Magic Classic* from GOG on a PC.
